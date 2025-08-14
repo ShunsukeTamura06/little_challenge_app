@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  # Python/FastAPIサービス
+  api:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    environment:
+      # APIがデータベースを見つけるための設定
+      - DATABASE_URL=postgresql://myuser:mypassword@db:5432/mydatabase
+    depends_on:
+      - db
+
+  # PostgreSQLデータベースサービス
+  db:
+    image: postgres:15
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_DB=mydatabase
+      - POSTGRES_USER=myuser
+      - POSTGRES_PASSWORD=mypassword
+    ports:
+      # Windowsマシン上のポート5433でDBを公開（競合を避けるため）
+      - "5433:5432"
+
+volumes:
+  postgres_data:
