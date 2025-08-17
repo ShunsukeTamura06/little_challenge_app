@@ -27,7 +27,8 @@ class _MyAppState extends State<MyApp> {
   // APIを叩いて挑戦リストを取得する関数
   Future<void> fetchChallenges() async {
     // 【重要】Androidエミュレータから見たホストPCのlocalhostにアクセスするための特別なIPアドレス
-    const url = 'http://10.0.2.2:8000/challenges';
+    // const url = 'http://10.0.2.2:8000/challenges';
+      const url = 'http://localhost:8000/challenges';
     try {
       final response = await http.get(Uri.parse(url));
       // 日本語が文字化けしないようにutf8でデコードする
