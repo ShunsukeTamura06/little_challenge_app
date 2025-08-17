@@ -1,16 +1,17 @@
+# backend/main.py
+
 from fastapi import FastAPI, Depends, HTTPException
-from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, text
+from sqlalchemy import create_engine, Column, Integer, String, ForeignKey
 from sqlalchemy.orm import sessionmaker, Session, declarative_base, relationship
 from typing import List
+import uuid # UUIDを生成するためにインポート
 
-# --- データベース設定 ---
+# --- データベースとモデルのセットアップ（モデルを追加） ---
 DATABASE_URL = "postgresql://myuser:mypassword@db:5432/mydatabase"
-
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-# --- DB依存性: リクエストごとにDBセッションを確立 ---
 def get_db():
     db = SessionLocal()
     try:
@@ -18,13 +19,10 @@ def get_db():
     finally:
         db.close()
 
-# --- SQLAlchemyモデル（DBテーブルの定義） ---
-# これらのモデルは、DBのテーブル構造をPythonコードで表現したものです。
 class Category(Base):
     __tablename__ = "categories"
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False, unique=True)
-    description = Column(String)
     challenges = relationship("Challenge", back_populates="category")
 
 class Challenge(Base):
@@ -36,40 +34,74 @@ class Challenge(Base):
     difficulty = Column(Integer, nullable=False)
     category = relationship("Category", back_populates="challenges")
 
+# achievementsテーブル用の新しいモデル
+class Achievement(Base):
+    __tablename__ = "achievements"
+    # UUIDを文字列として保存。デフォルトで新しいUUIDを生成
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, nullable=False) # 簡単のため、一旦文字列として扱う
+    challenge_id = Column(Integer, ForeignKey("challenges.id"), nullable=False)
+    challenge = relationship("Challenge")
 
-# --- Pydanticモデル（APIレスポンスの型定義） ---
-# APIのレスポンスとして、どの情報をどんな型で返すかを定義します。
-# これにより、自動でドキュメントが生成され、型チェックも行われます。
+# --- Pydanticモデル ---
 from pydantic import BaseModel
 
 class CategoryResponse(BaseModel):
     id: int
     name: str
-
-    class Config:
-        orm_mode = True
+    class Config: from_attributes = True
 
 class ChallengeResponse(BaseModel):
     id: int
     title: str
     description: str
     difficulty: int
-    category: CategoryResponse # ネストしたカテゴリ情報
+    category: CategoryResponse
+    class Config: from_attributes = True
 
-    class Config:
-        orm_mode = True
+# 達成報告用の新しいPydanticモデル
+class AchievementCreate(BaseModel):
+    challenge_id: int
 
-# --- FastAPIアプリケーション本体 ---
+class AchievementResponse(BaseModel):
+    id: str
+    user_id: str
+    challenge: ChallengeResponse
+    class Config: from_attributes = True
+
+
+# --- FastAPIアプリケーション ---
 app = FastAPI()
 
-# --- APIエンドポイントの定義 ---
+# --- APIエンドポイント ---
+@app.post("/achievements", response_model=AchievementResponse, status_code=201)
+def create_achievement(achievement: AchievementCreate, db: Session = Depends(get_db)):
+    # 一旦、user_idは固定値を使います。後で本当の認証機能を追加します。
+    user_id = "user_123"
+    
+    # 挑戦が存在するか確認
+    db_challenge = db.query(Challenge).filter(Challenge.id == achievement.challenge_id).first()
+    if db_challenge is None:
+        raise HTTPException(status_code=404, detail="Challenge not found")
+        
+    db_achievement = Achievement(
+        user_id=user_id,
+        challenge_id=achievement.challenge_id
+    )
+    db.add(db_achievement)
+    db.commit()
+    db.refresh(db_achievement)
+    return db_achievement
+
+@app.get("/achievements", response_model=List[AchievementResponse])
+def get_achievements(db: Session = Depends(get_db)):
+    # 固定ユーザーの達成記録を取得
+    user_id = "user_123"
+    achievements = db.query(Achievement).filter(Achievement.user_id == user_id).order_by(Achievement.id.desc()).all()
+    return achievements
+
 @app.get("/challenges", response_model=List[ChallengeResponse])
 def get_challenges(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
-    """
-    挑戦のリストを取得します。
-    - skip: 開始位置
-    - limit: 取得件数
-    """
     challenges = db.query(Challenge).offset(skip).limit(limit).all()
     if not challenges:
         raise HTTPException(status_code=404, detail="Challenges not found")
