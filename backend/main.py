@@ -1,10 +1,11 @@
 # backend/main.py
 
 from fastapi import FastAPI, Depends, HTTPException
-from sqlalchemy import create_engine, Column, Integer, String, ForeignKey
-from sqlalchemy.orm import sessionmaker, Session, declarative_base, relationship
+from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, func
+from sqlalchemy.orm import sessionmaker, Session, declarative_base, relationship, joinedload
 from typing import List
-import uuid # UUIDを生成するためにインポート
+import uuid
+import random
 
 # --- データベースとモデルのセットアップ（モデルを追加） ---
 DATABASE_URL = "postgresql://myuser:mypassword@db:5432/mydatabase"
@@ -74,6 +75,29 @@ class AchievementResponse(BaseModel):
 app = FastAPI()
 
 # --- APIエンドポイント ---
+
+@app.get("/tasks/daily")
+def get_daily_task(db: Session = Depends(get_db)):
+    """
+    Provides a single daily task based on the format specified in gemini.md.
+    Uses SQLAlchemy ORM.
+    """
+    random_task = db.query(Challenge).options(joinedload(Challenge.category)).order_by(func.random()).first()
+
+    if random_task is None:
+        raise HTTPException(status_code=404, detail="No tasks found in the database.")
+
+    # Format the response according to the spec
+    response_data = {
+        "id": str(random_task.id),
+        "title": random_task.title,
+        "tags": [random_task.category.name],
+        "stats": {
+            "completion_rate": random.uniform(0.1, 0.8)
+        }
+    }
+    return response_data
+
 @app.post("/achievements", response_model=AchievementResponse, status_code=201)
 def create_achievement(achievement: AchievementCreate, db: Session = Depends(get_db)):
     # 一旦、user_idは固定値を使います。後で本当の認証機能を追加します。
