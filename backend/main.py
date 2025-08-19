@@ -1,11 +1,11 @@
 # backend/main.py
 
-from fastapi import FastAPI, Depends, HTTPException
-from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, func
+from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, func, DateTime
 from sqlalchemy.orm import sessionmaker, Session, declarative_base, relationship, joinedload
 from typing import List
 import uuid
 import random
+from datetime import datetime
 
 # --- データベースとモデルのセットアップ（モデルを追加） ---
 DATABASE_URL = "postgresql://myuser:mypassword@db:5432/mydatabase"
@@ -43,6 +43,7 @@ class Achievement(Base):
     challenge_id = Column(Integer, ForeignKey("challenges.id"), nullable=False)
     memo = Column(String, nullable=True)
     feeling = Column(String, nullable=True)
+    created_at = Column(DateTime, default=func.now(), nullable=False)
     challenge = relationship("Challenge")
 
 # --- Pydanticモデル ---
@@ -78,6 +79,7 @@ class AchievementResponse(BaseModel):
     challenge: ChallengeResponse
     memo: Optional[str] = None
     feeling: Optional[str] = None
+    created_at: datetime
     class Config: from_attributes = True
 
 
