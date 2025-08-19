@@ -2,29 +2,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-
-// TODO: This class is duplicated from home_screen.dart. Move to a shared models file.
-class StockedTask {
-  final String id;
-  final String title;
-  final List<String> tags;
-
-  StockedTask({
-    required this.id,
-    required this.title,
-    required this.tags,
-  });
-
-  factory StockedTask.fromJson(Map<String, dynamic> json) {
-    // The category is nested in the response for dummy data
-    final categoryName = json['category'] != null ? json['category']['name'] as String : '未分類';
-    return StockedTask(
-      id: json['id'].toString(),
-      title: json['title'] as String,
-      tags: [categoryName], // Assuming tags come from the category name for now
-    );
-  }
-}
+import '../models/task.dart';
 
 class StockScreen extends StatefulWidget {
   const StockScreen({super.key});
@@ -36,7 +14,7 @@ class StockScreen extends StatefulWidget {
 class _StockScreenState extends State<StockScreen> {
   bool _isLoading = true;
   String? _errorMessage;
-  List<StockedTask> _stockedTasks = [];
+  List<Task> _stockedTasks = [];
 
   @override
   void initState() {
@@ -57,7 +35,7 @@ class _StockScreenState extends State<StockScreen> {
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(utf8.decode(response.bodyBytes));
         setState(() {
-          _stockedTasks = data.map((json) => StockedTask.fromJson(json)).toList();
+          _stockedTasks = data.map((json) => Task.fromJson(json)).toList();
           _isLoading = false;
         });
       } else {

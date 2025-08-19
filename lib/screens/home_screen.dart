@@ -6,30 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'achievement_report_screen.dart';
-
-// A simple data class for the daily task
-class DailyTask {
-  final String id;
-  final String title;
-  final List<String> tags;
-  final double completionRate;
-
-  DailyTask({
-    required this.id,
-    required this.title,
-    required this.tags,
-    required this.completionRate,
-  });
-
-  factory DailyTask.fromJson(Map<String, dynamic> json) {
-    return DailyTask(
-      id: json['id'] as String,
-      title: json['title'] as String,
-      tags: List<String>.from(json['tags'] as List),
-      completionRate: (json['stats']['completion_rate'] as num).toDouble(),
-    );
-  }
-}
+import '../models/task.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -42,7 +19,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // State for API data
   bool _isLoading = true;
   String? _errorMessage;
-  DailyTask? _task;
+  Task? _task;
 
   @override
   void initState() {
@@ -64,7 +41,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (response.statusCode == 200) {
         final data = json.decode(utf8.decode(response.bodyBytes));
         setState(() {
-          _task = DailyTask.fromJson(data);
+          _task = Task.fromJson(data);
           _isLoading = false;
         });
       } else {
@@ -212,7 +189,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return _buildTaskView(context, _task!); // Task view is built here
   }
 
-  Widget _buildTaskView(BuildContext context, DailyTask task) {
+  Widget _buildTaskView(BuildContext context, Task task) {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
 
@@ -251,7 +228,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Icon(Icons.people_alt_outlined, color: textTheme.bodyMedium?.color),
                       const SizedBox(width: 8),
                       Text(
-                        "全ユーザーの${(task.completionRate * 100).toStringAsFixed(0)}%が達成",
+                        "全ユーザーの${(task.completionRate! * 100).toStringAsFixed(0)}%が達成",
                         style: textTheme.bodyMedium,
                       ),
                     ],
