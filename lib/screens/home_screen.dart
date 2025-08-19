@@ -59,32 +59,20 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _onAchieveTapped() {
-    // TODO: Here you would typically update the state on the server first.
+    if (_task == null) return;
 
-    // Navigate to the report screen immediately
-    final navigator = Navigator.of(context);
-    navigator.push(
+    // TODO: Implement UndoPanel and timer logic as per spec [SCR-001]
+
+    // For now, directly open the report screen as a fullscreen dialog.
+    Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => const AchievementReportScreen(),
+        fullscreenDialog: true,
       ),
-    );
-
-    // Show a SnackBar with an Undo action
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('🎉達成しました！'),
-        action: SnackBarAction(
-          label: '元に戻す',
-          onPressed: () {
-            // This will pop the AchievementReportScreen
-            if (navigator.canPop()) {
-              navigator.pop();
-            }
-            // TODO: Here you would send a request to the server to undo the achievement.
-          },
-        ),
-      ),
-    );
+    ).then((_) {
+      // After the report screen is closed, fetch a new task.
+      _fetchDailyTask(forceRefresh: true);
+    });
   }
 
   Future<void> _onStockItTapped() async {
