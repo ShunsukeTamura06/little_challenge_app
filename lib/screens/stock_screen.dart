@@ -74,16 +74,68 @@ class _StockScreenState extends State<StockScreen> {
     }
   }
 
-  void _setAsDailyTask(String taskId) {
-    // TODO: Implement API call to POST /tasks/daily/replace
-    print("Setting task $taskId as today's task.");
-    // After success, maybe switch to home tab and refresh.
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('タスク「$taskId」を今日のタスクに設定しました（仮）'),
-        backgroundColor: Colors.blue,
-      ),
+  Future<void> _setAsDailyTask(String taskId, String taskTitle) async {
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('タスクの変更'),
+          content: Text('「$taskTitle」を今日のタスクに設定しますか？'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('キャンセル'),
+              onPressed: () => Navigator.of(context).pop(false),
+            ),
+            TextButton(
+              child: const Text('はい'),
+              onPressed: () => Navigator.of(context).pop(true),
+            ),
+          ],
+        );
+      },
     );
+
+    if (confirmed != true) {
+      return;
+    }
+
+    final url = Uri.parse('http://localhost:8000/tasks/daily/replace');
+    final headers = {'Content-Type': 'application/json'};
+    final body = json.encode({
+      'new_task_id': int.parse(taskId),
+      'source': 'stock',
+    });
+
+    try {
+      final response = await http.post(url, headers: headers, body: body);
+
+      if (!mounted) return;
+
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('今日のタスクを変更しました！ホーム画面で確認してください。'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        // TODO: Switch to the home tab and trigger a refresh.
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('タスクの変更に失敗しました (Code: ${response.statusCode})'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('エラーが発生しました: $e'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    }
   }
 
   @override
@@ -140,7 +192,7 @@ class _StockScreenState extends State<StockScreen> {
             ),
             trailing: TextButton(
               child: const Text('今日やる'),
-              onPressed: () => _setAsDailyTask(task.id),
+              onPressed: () => _setAsDailyTask(task.id, task.title),
             ),
           );
         },

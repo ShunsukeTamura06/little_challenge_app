@@ -168,6 +168,26 @@ def get_stock(db: Session = Depends(get_db)):
         return []
     return dummy_stocked_tasks
 
+class TaskReplaceRequest(BaseModel):
+    new_task_id: int
+    source: str # e.g., "stock", "my_task"
+
+@app.post("/tasks/daily/replace", response_model=ChallengeResponse)
+def replace_daily_task(request: TaskReplaceRequest, db: Session = Depends(get_db)):
+    """
+    Replaces the daily task with a new one from stock or my_tasks.
+    (Currently a dummy implementation)
+    """
+    # TODO: Implement the actual logic of replacing the daily task.
+    # For now, just fetch the requested challenge and return it.
+    new_task = db.query(Challenge).options(joinedload(Challenge.category)).filter(Challenge.id == request.new_task_id).first()
+    if not new_task:
+        raise HTTPException(status_code=404, detail=f"Challenge with id {request.new_task_id} not found.")
+    
+    # The response format for a single challenge needs to be adapted.
+    # Let's re-use the ChallengeResponse model which should be compatible.
+    return new_task
+
 @app.get("/")
 def read_root():
     return {"message": "Welcome to the Little Challenge API!"}
