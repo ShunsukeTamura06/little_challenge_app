@@ -16,16 +16,23 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // State for API data
   bool _isLoading = true;
   String? _errorMessage;
   Task? _task;
+  bool _showUndoPanel = false;
+  Timer? _undoTimer;
 
   @override
   void initState() {
     super.initState();
     initializeDateFormatting('ja_JP', null);
     _fetchDailyTask();
+  }
+
+  @override
+  void dispose() {
+    _undoTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _fetchDailyTask({bool forceRefresh = false}) async {
@@ -61,17 +68,37 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onAchieveTapped() {
     if (_task == null) return;
 
-    // TODO: Implement UndoPanel and timer logic as per spec [SCR-001]
+    setState(() {
+      _showUndoPanel = true;
+    });
 
-    // For now, directly open the report screen as a fullscreen dialog.
+    _undoTimer?.cancel();
+    _undoTimer = Timer(const Duration(seconds: 5), () {
+      _triggerAchievementFlow();
+    });
+  }
+
+  void _triggerAchievementFlow() {
+    if (!_showUndoPanel || !mounted) return;
+
+    setState(() {
+      _showUndoPanel = false;
+    });
+
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => AchievementReportScreen(taskId: _task!.id),
         fullscreenDialog: true,
       ),
     ).then((_) {
-      // After the report screen is closed, fetch a new task.
       _fetchDailyTask(forceRefresh: true);
+    });
+  }
+
+  void _cancelAchievement() {
+    _undoTimer?.cancel();
+    setState(() {
+      _showUndoPanel = false;
     });
   }
 
@@ -85,19 +112,17 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final response = await http.post(url, headers: headers, body: body);
 
-      if (!mounted) return; // Check if the widget is still in the tree
+      if (!mounted) return;
 
       if (response.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('ストックに追加しました'),
-            backgroundColor: Colors.teal, // Use a color from the palette
+            backgroundColor: Colors.teal,
           ),
         );
-        // Fetch a new task
         await _fetchDailyTask(forceRefresh: true);
       } else {
-        // Handle error
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('ストックの追加に失敗しました (Code: ${response.statusCode})'),
@@ -138,122 +163,162 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildMainContent(BuildContext context) {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (_errorMessage != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(_errorMessage!, textAlign: TextAlign.center),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () => _fetchDailyTask(),
-              child: const Text('再試行'),
+    return Stack(
+      children: [
+        if (_isLoading)
+          const Center(child: CircularProgressIndicator())
+        else if (_errorMessage != null)
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(_errorMessage!, textAlign: TextAlign.center),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => _fetchDailyTask(),
+                  child: const Text('再試行'),
+                ),
+              ],
             ),
-          ],
-        ),
-      );
-    }
-
-    if (_task == null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text("今日のタスクはありませんでした。", textAlign: TextAlign.center),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () => _fetchDailyTask(),
-              child: const Text('再読み込み'),
+          )
+        else if (_task == null)
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text("今日のタスクはありませんでした。", textAlign: TextAlign.center),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => _fetchDailyTask(),
+                  child: const Text('再読み込み'),
+                ),
+              ],
             ),
-          ],
-        ),
-      );
-    }
-
-    return _buildTaskView(context, _task!); // Task view is built here
+          )
+        else
+          _buildTaskView(context, _task!),
+        
+        // Undo Panel
+        if (_showUndoPanel)
+          _buildUndoPanel(context),
+      ],
+    );
   }
 
   Widget _buildTaskView(BuildContext context, Task task) {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
 
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Card(
-            color: theme.colorScheme.surface,
-            elevation: 2,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                children: [
-                  Text(
-                    task.title,
-                    style: textTheme.titleLarge,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  Wrap(
-                    spacing: 8.0,
-                    runSpacing: 4.0,
-                    alignment: WrapAlignment.center,
-                    children: task.tags
-                        .map((tag) => Chip(label: Text(tag, style: textTheme.bodyMedium))))
-                        .toList(),
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.people_alt_outlined, color: textTheme.bodyMedium?.color),
-                      const SizedBox(width: 8),
-                      Text(
-                        "全ユーザーの${(task.completionRate! * 100).toStringAsFixed(0)}%が達成",
-                        style: textTheme.bodyMedium,
-                      ),
-                    ],
-                  )
-                ],
+    // Hide the main task view when the undo panel is shown
+    return AnimatedOpacity(
+      opacity: _showUndoPanel ? 0.0 : 1.0,
+      duration: const Duration(milliseconds: 200),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Card(
+              color: theme.colorScheme.surface,
+              elevation: 2,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  children: [
+                    Text(
+                      task.title,
+                      style: textTheme.titleLarge,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    Wrap(
+                      spacing: 8.0,
+                      runSpacing: 4.0,
+                      alignment: WrapAlignment.center,
+                      children: task.tags
+                          .map((tag) => Chip(label: Text(tag, style: textTheme.bodyMedium))))
+                          .toList(),
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.people_alt_outlined, color: textTheme.bodyMedium?.color),
+                        const SizedBox(width: 8),
+                        Text(
+                          "全ユーザーの${(task.completionRate! * 100).toStringAsFixed(0)}%が達成",
+                          style: textTheme.bodyMedium,
+                        ),
+                      ],
+                    )
+                  ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: _onAchieveTapped,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: theme.primaryColor,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: _onAchieveTapped,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: theme.primaryColor,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: Text('達成！', style: textTheme.labelLarge),
             ),
-            child: Text('達成！', style: textTheme.labelLarge),
-          ),
-          const SizedBox(height: 12),
-          OutlinedButton(
-            onPressed: _onStockItTapped,
-            style: OutlinedButton.styleFrom(
-              side: BorderSide(color: theme.primaryColor),
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            const SizedBox(height: 12),
+            OutlinedButton(
+              onPressed: _onStockItTapped,
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: theme.primaryColor),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: Text('あとでやる', style: TextStyle(color: theme.primaryColor)),
             ),
-            child: Text('あとでやる', style: TextStyle(color: theme.primaryColor)),
-          ),
-          const SizedBox(height: 12),
-          TextButton(
-            onPressed: () => _fetchDailyTask(forceRefresh: true),
-            child: Text(
-              '他の提案を見る',
-              style: TextStyle(color: textTheme.bodyMedium?.color, decoration: TextDecoration.underline),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () => _fetchDailyTask(forceRefresh: true),
+              child: Text(
+                '他の提案を見る',
+                style: TextStyle(color: textTheme.bodyMedium?.color, decoration: TextDecoration.underline),
+              ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUndoPanel(BuildContext context) {
+    final theme = Theme.of(context);
+    return Positioned(
+      bottom: 16,
+      left: 16,
+      right: 16,
+      child: Material(
+        elevation: 4,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF4CAF50), // System Success Green
+            borderRadius: BorderRadius.circular(8),
           ),
-        ],
+          child: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.white),
+              const SizedBox(width: 12),
+              const Text('🎉達成しました！', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              const Spacer(),
+              TextButton(
+                onPressed: _cancelAchievement,
+                child: const Text('取り消す', style: TextStyle(color: Colors.white, decoration: TextDecoration.underline)),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
