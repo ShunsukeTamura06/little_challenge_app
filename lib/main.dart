@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/explore_screen.dart';
 import 'screens/stock_screen.dart';
 import 'screens/history_screen.dart';
 import 'screens/my_tasks_screen.dart';
+import 'providers/app_state_manager.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => AppStateManager(),
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -42,15 +49,8 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class MainNavigator extends StatefulWidget {
+class MainNavigator extends StatelessWidget {
   const MainNavigator({super.key});
-
-  @override
-  State<MainNavigator> createState() => _MainNavigatorState();
-}
-
-class _MainNavigatorState extends State<MainNavigator> {
-  int _selectedIndex = 0;
 
   static const List<Widget> _widgetOptions = <Widget>[
     HomeScreen(),
@@ -60,47 +60,49 @@ class _MainNavigatorState extends State<MainNavigator> {
     MyTasksScreen(),
   ];
 
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: _widgetOptions.elementAt(_selectedIndex),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'ホーム',
+    // Use Consumer to listen to changes in AppStateManager
+    return Consumer<AppStateManager>(
+      builder: (context, appState, child) {
+        return Scaffold(
+          body: Center(
+            child: _widgetOptions.elementAt(appState.selectedIndex),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.search),
-            label: '探す',
+          bottomNavigationBar: BottomNavigationBar(
+            type: BottomNavigationBarType.fixed,
+            items: const <BottomNavigationBarItem>[
+              BottomNavigationBarItem(
+                icon: Icon(Icons.home),
+                label: 'ホーム',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.search),
+                label: '探す',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.inventory_2_outlined),
+                label: 'ストック',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.edit_calendar_outlined),
+                label: 'ログ',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.person_outline),
+                label: 'マイタスク',
+              ),
+            ],
+            currentIndex: appState.selectedIndex,
+            selectedItemColor: Theme.of(context).primaryColor,
+            unselectedItemColor: const Color(0xFF757575), // Text (Secondary)
+            onTap: (index) {
+              // Use the provider to change the state
+              Provider.of<AppStateManager>(context, listen: false).goToTab(index);
+            },
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.inventory_2_outlined),
-            label: 'ストック',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.edit_calendar_outlined),
-            label: 'ログ',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            label: 'マイタスク',
-          ),
-        ],
-        currentIndex: _selectedIndex,
-        selectedItemColor: Theme.of(context).primaryColor,
-        unselectedItemColor: const Color(0xFF757575), // Text (Secondary)
-        onTap: _onItemTapped,
-      ),
+        );
+      },
     );
   }
 }

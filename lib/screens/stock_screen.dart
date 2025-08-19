@@ -2,7 +2,9 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 import '../models/task.dart';
+import '../providers/app_state_manager.dart';
 
 class StockScreen extends StatefulWidget {
   const StockScreen({super.key});
@@ -92,11 +94,13 @@ class _StockScreenState extends State<StockScreen> {
       if (response.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('今日のタスクを変更しました！ホーム画面で確認してください。'),
+            content: Text('今日のタスクを変更しました！'),
             backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
           ),
         );
-        // TODO: Switch to the home tab and trigger a refresh.
+        // Switch to the home tab
+        Provider.of<AppStateManager>(context, listen: false).goToTab(0);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
