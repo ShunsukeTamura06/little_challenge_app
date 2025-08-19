@@ -238,7 +238,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       runSpacing: 4.0,
                       alignment: WrapAlignment.center,
                       children: task.tags
-                          .map((tag) => Chip(label: Text(tag, style: textTheme.bodyMedium))))
+                          .map((tag) => Chip(label: Text(tag, style: textTheme.bodyMedium)))
                           .toList(),
                     ),
                     const SizedBox(height: 24),

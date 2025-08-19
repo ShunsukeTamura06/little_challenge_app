@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
@@ -12,6 +13,7 @@ class AchievementReportScreen extends StatefulWidget {
 }
 
 class _AchievementReportScreenState extends State<AchievementReportScreen> {
+  late ConfettiController _confettiController;
   int _currentStep = 0;
   String? _selectedFeeling;
   final _memoController = TextEditingController();
@@ -26,7 +28,14 @@ class _AchievementReportScreenState extends State<AchievementReportScreen> {
   };
 
   @override
+  void initState() {
+    super.initState();
+    _confettiController = ConfettiController(duration: const Duration(seconds: 1));
+  }
+
+  @override
   void dispose() {
+    _confettiController.dispose();
     _memoController.dispose();
     super.dispose();
   }
@@ -49,8 +58,9 @@ class _AchievementReportScreenState extends State<AchievementReportScreen> {
       if (!mounted) return;
 
       if (response.statusCode == 201) {
-        // TODO: Show confetti on success
-        Navigator.of(context).pop(); // Close the modal
+        _confettiController.play();
+        await Future.delayed(const Duration(milliseconds: 1500));
+        if (mounted) Navigator.of(context).pop();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -84,12 +94,27 @@ class _AchievementReportScreenState extends State<AchievementReportScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
-          child: _currentStep == 0 ? _buildStep1() : _buildStep2(),
-        ),
+      body: Stack(
+        children: [
+          SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              child: _currentStep == 0 ? _buildStep1() : _buildStep2(),
+            ),
+          ),
+          Align(
+            alignment: Alignment.topCenter,
+            child: ConfettiWidget(
+              confettiController: _confettiController,
+              blastDirectionality: BlastDirectionality.explosive,
+              shouldLoop: false,
+              numberOfParticles: 20,
+              gravity: 0.3,
+              emissionFrequency: 0.05,
+            ),
+          ),
+        ],
       ),
     );
   }

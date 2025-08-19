@@ -176,8 +176,12 @@ class _MyTasksScreenState extends State<MyTasksScreen> {
     }
 
     if (_myTasks.isEmpty) {
-      return const Center(child: Text('マイタスクはありません。
-+ボタンから追加しましょう！'));
+      return const Center(
+        child: Text(
+          'マイタスクはありません。\n+ボタンから追加しましょう！',
+          textAlign: TextAlign.center,
+        ),
+      );
     }
 
     return RefreshIndicator(
