@@ -1,7 +1,11 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 class AchievementReportScreen extends StatefulWidget {
-  const AchievementReportScreen({super.key});
+  final String taskId;
+
+  const AchievementReportScreen({super.key, required this.taskId});
 
   @override
   State<AchievementReportScreen> createState() => _AchievementReportScreenState();
@@ -13,7 +17,6 @@ class _AchievementReportScreenState extends State<AchievementReportScreen> {
   final _memoController = TextEditingController();
   bool _isSubmitting = false;
 
-  // Define feelings
   final Map<String, String> _feelings = {
     '😄': '嬉しい',
     '😊': '楽しい',
@@ -28,23 +31,47 @@ class _AchievementReportScreenState extends State<AchievementReportScreen> {
     super.dispose();
   }
 
-  void _submitReport({String? feeling}) {
+  Future<void> _submitReport({String? feeling}) async {
     if (_isSubmitting) return;
     setState(() => _isSubmitting = true);
 
-    // TODO: Implement API call to POST /logs
-    print('Submitting report...');
-    print('Memo: ${_memoController.text}');
-    print('Feeling: $feeling');
+    final url = Uri.parse('http://localhost:8000/logs');
+    final headers = {'Content-Type': 'application/json'};
+    final body = json.encode({
+      'task_id': int.parse(widget.taskId),
+      'memo': _memoController.text,
+      'feeling': feeling,
+    });
 
-    // Simulate API call
-    Future.delayed(const Duration(seconds: 1), () {
-      if (mounted) {
-        setState(() => _isSubmitting = false);
+    try {
+      final response = await http.post(url, headers: headers, body: body);
+
+      if (!mounted) return;
+
+      if (response.statusCode == 201) {
         // TODO: Show confetti on success
         Navigator.of(context).pop(); // Close the modal
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('レポートの送信に失敗しました (Code: ${response.statusCode})'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
       }
-    });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('エラーが発生しました: $e'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
   }
 
   @override
@@ -107,7 +134,7 @@ class _AchievementReportScreenState extends State<AchievementReportScreen> {
         ),
         const SizedBox(height: 24),
         ElevatedButton(
-          onPressed: () => setState(() => _currentStep = 1),
+          onPressed: _isSubmitting ? null : () => setState(() => _currentStep = 1),
           style: ElevatedButton.styleFrom(
             backgroundColor: theme.primaryColor,
             padding: const EdgeInsets.symmetric(vertical: 16),
@@ -116,11 +143,13 @@ class _AchievementReportScreenState extends State<AchievementReportScreen> {
         ),
         const SizedBox(height: 8),
         TextButton(
-          onPressed: () => _submitReport(),
-          child: Text(
-            "スキップして完了",
-            style: TextStyle(color: textTheme.bodyMedium?.color),
-          ),
+          onPressed: _isSubmitting ? null : () => _submitReport(),
+          child: _isSubmitting && _selectedFeeling == null
+              ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator())
+              : Text(
+                  "スキップして完了",
+                  style: TextStyle(color: textTheme.bodyMedium?.color),
+                ),
         ),
       ],
     );
@@ -163,7 +192,9 @@ class _AchievementReportScreenState extends State<AchievementReportScreen> {
         ),
         const SizedBox(height: 32),
         ElevatedButton(
-          onPressed: _selectedFeeling == null ? null : () => _submitReport(feeling: _selectedFeeling),
+          onPressed: _isSubmitting || _selectedFeeling == null
+              ? null
+              : () => _submitReport(feeling: _selectedFeeling),
           style: ElevatedButton.styleFrom(
             backgroundColor: theme.primaryColor,
             padding: const EdgeInsets.symmetric(vertical: 16),

@@ -66,7 +66,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // For now, directly open the report screen as a fullscreen dialog.
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => const AchievementReportScreen(),
+        builder: (context) => AchievementReportScreen(taskId: _task!.id),
         fullscreenDialog: true,
       ),
     ).then((_) {

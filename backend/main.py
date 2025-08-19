@@ -38,14 +38,16 @@ class Challenge(Base):
 # achievementsテーブル用の新しいモデル
 class Achievement(Base):
     __tablename__ = "achievements"
-    # UUIDを文字列として保存。デフォルトで新しいUUIDを生成
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(String, nullable=False) # 簡単のため、一旦文字列として扱う
     challenge_id = Column(Integer, ForeignKey("challenges.id"), nullable=False)
+    memo = Column(String, nullable=True)
+    feeling = Column(String, nullable=True)
     challenge = relationship("Challenge")
 
 # --- Pydanticモデル ---
 from pydantic import BaseModel
+from typing import Optional
 
 class CategoryResponse(BaseModel):
     id: int
@@ -61,13 +63,21 @@ class ChallengeResponse(BaseModel):
     class Config: from_attributes = True
 
 # 達成報告用の新しいPydanticモデル
-class AchievementCreate(BaseModel):
-    challenge_id: int
+class LogCreate(BaseModel):
+    task_id: int
+    memo: Optional[str] = None
+    feeling: Optional[str] = None
+
+class LogResponse(BaseModel):
+    log_id: str
+    message: str
 
 class AchievementResponse(BaseModel):
     id: str
     user_id: str
     challenge: ChallengeResponse
+    memo: Optional[str] = None
+    feeling: Optional[str] = None
     class Config: from_attributes = True
 
 
@@ -98,31 +108,31 @@ def get_daily_task(force_refresh: bool = False, db: Session = Depends(get_db)):
     }
     return response_data
 
-@app.post("/achievements", response_model=AchievementResponse, status_code=201)
-def create_achievement(achievement: AchievementCreate, db: Session = Depends(get_db)):
-    # 一旦、user_idは固定値を使います。後で本当の認証機能を追加します。
-    user_id = "user_123"
-    
-    # 挑戦が存在するか確認
-    db_challenge = db.query(Challenge).filter(Challenge.id == achievement.challenge_id).first()
+@app.post("/logs", response_model=LogResponse, status_code=201)
+def create_log(log: LogCreate, db: Session = Depends(get_db)):
+    user_id = "user_123"  # Fixed user_id for now
+
+    db_challenge = db.query(Challenge).filter(Challenge.id == log.task_id).first()
     if db_challenge is None:
         raise HTTPException(status_code=404, detail="Challenge not found")
-        
-    db_achievement = Achievement(
-        user_id=user_id,
-        challenge_id=achievement.challenge_id
-    )
-    db.add(db_achievement)
-    db.commit()
-    db.refresh(db_achievement)
-    return db_achievement
 
-@app.get("/achievements", response_model=List[AchievementResponse])
-def get_achievements(db: Session = Depends(get_db)):
-    # 固定ユーザーの達成記録を取得
+    db_log = Achievement(
+        user_id=user_id,
+        challenge_id=log.task_id,
+        memo=log.memo,
+        feeling=log.feeling
+    )
+    db.add(db_log)
+    db.commit()
+    db.refresh(db_log)
+    
+    return {"log_id": db_log.id, "message": "Successfully created."}
+
+@app.get("/logs", response_model=List[AchievementResponse])
+def get_logs(db: Session = Depends(get_db)):
     user_id = "user_123"
-    achievements = db.query(Achievement).filter(Achievement.user_id == user_id).order_by(Achievement.id.desc()).all()
-    return achievements
+    logs = db.query(Achievement).filter(Achievement.user_id == user_id).order_by(Achievement.id.desc()).all()
+    return logs
 
 @app.get("/challenges", response_model=List[ChallengeResponse])
 def get_challenges(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
