@@ -200,6 +200,53 @@ def replace_daily_task(request: TaskReplaceRequest, db: Session = Depends(get_db
     # Let's re-use the ChallengeResponse model which should be compatible.
     return new_task
 
+# --- My Tasks Models and Endpoints ---
+
+class MyTask(Base):
+    __tablename__ = "my_tasks"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(String, nullable=False)
+    title = Column(String, nullable=False)
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+
+class MyTaskCreate(BaseModel):
+    title: str
+
+class MyTaskResponse(BaseModel):
+    id: int
+    user_id: str
+    title: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+@app.get("/my_tasks", response_model=List[MyTaskResponse])
+def get_my_tasks(db: Session = Depends(get_db)):
+    user_id = "user_123"  # Fixed user_id for now
+    tasks = db.query(MyTask).filter(MyTask.user_id == user_id).order_by(MyTask.created_at.desc()).all()
+    return tasks
+
+@app.post("/my_tasks", response_model=MyTaskResponse, status_code=201)
+def create_my_task(task: MyTaskCreate, db: Session = Depends(get_db)):
+    user_id = "user_123"  # Fixed user_id for now
+    db_task = MyTask(user_id=user_id, title=task.title)
+    db.add(db_task)
+    db.commit()
+    db.refresh(db_task)
+    return db_task
+
+@app.delete("/my_tasks/{task_id}", status_code=204)
+def delete_my_task(task_id: int, db: Session = Depends(get_db)):
+    user_id = "user_123"  # Fixed user_id for now
+    db_task = db.query(MyTask).filter(MyTask.id == task_id, MyTask.user_id == user_id).first()
+    if db_task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    db.delete(db_task)
+    db.commit()
+    return
+
+
 @app.get("/")
 def read_root():
     return {"message": "Welcome to the Little Challenge API!"}
