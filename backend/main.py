@@ -136,6 +136,30 @@ def get_logs(db: Session = Depends(get_db)):
     logs = db.query(Achievement).filter(Achievement.user_id == user_id).order_by(Achievement.id.desc()).all()
     return logs
 
+@app.get("/categories", response_model=List[CategoryResponse])
+def get_categories(db: Session = Depends(get_db)):
+    """
+    Retrieves a list of all challenge categories.
+    """
+    categories = db.query(Category).order_by(Category.name).all()
+    return categories
+
+@app.get("/challenges/search", response_model=List[ChallengeResponse])
+def search_challenges(q: Optional[str] = None, category_id: Optional[int] = None, db: Session = Depends(get_db)):
+    """
+    Searches for challenges based on a query string or category.
+    """
+    query = db.query(Challenge).options(joinedload(Challenge.category))
+    
+    if q:
+        query = query.filter(Challenge.title.ilike(f"%{q}%"))
+        
+    if category_id:
+        query = query.filter(Challenge.category_id == category_id)
+        
+    results = query.all()
+    return results
+
 @app.get("/challenges", response_model=List[ChallengeResponse])
 def get_challenges(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
     challenges = db.query(Challenge).offset(skip).limit(limit).all()
