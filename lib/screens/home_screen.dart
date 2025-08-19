@@ -110,6 +110,47 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Future<void> _onStockItTapped() async {
+    if (_task == null) return;
+
+    final url = Uri.parse('http://localhost:8000/stock');
+    final headers = {'Content-Type': 'application/json'};
+    final body = json.encode({'task_id': int.parse(_task!.id)});
+
+    try {
+      final response = await http.post(url, headers: headers, body: body);
+
+      if (!mounted) return; // Check if the widget is still in the tree
+
+      if (response.statusCode == 201) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('ストックに追加しました'),
+            backgroundColor: Colors.teal, // Use a color from the palette
+          ),
+        );
+        // Fetch a new task
+        await _fetchDailyTask(forceRefresh: true);
+      } else {
+        // Handle error
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('ストックの追加に失敗しました (Code: ${response.statusCode})'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('エラーが発生しました: $e'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -231,7 +272,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 12),
           OutlinedButton(
-            onPressed: () { /* TODO: Handle 'あとでやる' */ },
+            onPressed: _onStockItTapped,
             style: OutlinedButton.styleFrom(
               side: BorderSide(color: theme.primaryColor),
               padding: const EdgeInsets.symmetric(vertical: 16),

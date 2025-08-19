@@ -77,7 +77,7 @@ app = FastAPI()
 # --- APIエンドポイント ---
 
 @app.get("/tasks/daily")
-def get_daily_task(db: Session = Depends(get_db)):
+def get_daily_task(force_refresh: bool = False, db: Session = Depends(get_db)):
     """
     Provides a single daily task based on the format specified in gemini.md.
     Uses SQLAlchemy ORM.
@@ -130,6 +130,29 @@ def get_challenges(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)
     if not challenges:
         raise HTTPException(status_code=404, detail="Challenges not found")
     return challenges
+
+class StockCreate(BaseModel):
+    task_id: int
+
+class StockResponse(BaseModel):
+    stock_id: str
+    message: str
+
+@app.post("/stock", response_model=StockResponse, status_code=201)
+def create_stock(stock: StockCreate, db: Session = Depends(get_db)):
+    """
+    Adds a task to the user's stock.
+    (Currently a dummy implementation)
+    """
+    # TODO: Implement actual database logic to store the stocked task
+    # For now, just log it and return a success response.
+    print(f"Task ID {stock.task_id} received to be stocked.")
+
+    # Dummy response
+    return {
+        "stock_id": f"stock_{uuid.uuid4()}",
+        "message": f"Task {stock.task_id} has been successfully stocked."
+    }
 
 @app.get("/")
 def read_root():
