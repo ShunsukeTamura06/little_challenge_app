@@ -154,6 +154,20 @@ def create_stock(stock: StockCreate, db: Session = Depends(get_db)):
         "message": f"Task {stock.task_id} has been successfully stocked."
     }
 
+@app.get("/stock", response_model=List[ChallengeResponse])
+def get_stock(db: Session = Depends(get_db)):
+    """
+    Retrieves the list of stocked tasks.
+    (Currently returns a dummy list of challenges)
+    """
+    # TODO: Implement actual logic to retrieve stocked tasks for the user.
+    # For now, return a few random challenges as dummy data.
+    dummy_stocked_tasks = db.query(Challenge).options(joinedload(Challenge.category)).order_by(func.random()).limit(3).all()
+    if not dummy_stocked_tasks:
+        # If the database is empty, return an empty list.
+        return []
+    return dummy_stocked_tasks
+
 @app.get("/")
 def read_root():
     return {"message": "Welcome to the Little Challenge API!"}
