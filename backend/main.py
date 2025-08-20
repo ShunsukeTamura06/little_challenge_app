@@ -118,6 +118,8 @@ def get_daily_task(force_refresh: bool = False, db: Session = Depends(get_db)):
     response_data = {
         "id": str(random_task.id),
         "title": random_task.title,
+        "description": random_task.description,
+        "difficulty": random_task.difficulty,
         "tags": [random_task.category.name],
         "stats": {
             "completion_rate": random.uniform(0.1, 0.8)
