@@ -43,8 +43,8 @@ CREATE TABLE achievements (
 
 -- 6. ユーザーがストックしたチャレンジを格納するテーブル
 CREATE TABLE stocks (
-    id UUID PRIMARY KEY,
-    user_id UUID NOT NULL REFERENCES users(id),
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    user_id TEXT NOT NULL, -- 簡単のためTEXT型を使用（本来はUUIDでusers(id)への参照）
     challenge_id INTEGER NOT NULL REFERENCES challenges(id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(), -- ストック作成日時
     UNIQUE (user_id, challenge_id) -- 同じチャレンジを重複してストックしないようにする
