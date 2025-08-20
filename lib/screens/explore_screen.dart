@@ -13,6 +13,8 @@ class Category {
   }
 }
 
+import 'package:little_challenge_app/screens/search_results_screen.dart';
+
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
 
@@ -69,13 +71,19 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   void _onSearch(String query) {
     if (query.isEmpty) return;
-    print("Searching for: $query");
-    // TODO: Navigate to search results screen [SCR-010]
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => SearchResultsScreen(searchQuery: query),
+      ),
+    );
   }
 
   void _onCategoryTapped(Category category) {
-    print("Tapped on category: ${category.name}");
-    // TODO: Navigate to search results screen [SCR-010] with category filter
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => SearchResultsScreen(categoryId: category.id),
+      ),
+    );
   }
 
   @override
