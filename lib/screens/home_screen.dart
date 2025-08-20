@@ -144,9 +144,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         );
         
-        // Switch to stock tab as per specification
-        Provider.of<AppStateManager>(context, listen: false).goToTab(2);
-        
         setState(() {
           _isStocking = true;
         });
