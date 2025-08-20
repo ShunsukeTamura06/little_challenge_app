@@ -274,9 +274,12 @@ class _StockScreenState extends State<StockScreen> {
                     onTap: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (context) => ChallengeDetailScreen(task: task),
+                          builder: (context) => ChallengeDetailScreen(task: task, isFromStock: true),
                         ),
-                      );
+                      ).then((_) {
+                        // Refresh stock list when returning from detail screen
+                        _fetchStockedTasks();
+                      });
                     },
                   ),
                 );

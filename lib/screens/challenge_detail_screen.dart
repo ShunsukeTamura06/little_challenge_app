@@ -7,8 +7,9 @@ import '../providers/app_state_manager.dart';
 
 class ChallengeDetailScreen extends StatelessWidget {
   final Task task;
+  final bool isFromStock;
 
-  const ChallengeDetailScreen({super.key, required this.task});
+  const ChallengeDetailScreen({super.key, required this.task, this.isFromStock = false});
 
   Future<void> _setAsDailyTask(BuildContext context) async {
     final bool? confirmed = await showDialog<bool>(
@@ -48,6 +49,23 @@ class ChallengeDetailScreen extends StatelessWidget {
       if (!context.mounted) return;
 
       if (response.statusCode == 200) {
+        // Update the daily task in the app state
+        final data = json.decode(utf8.decode(response.bodyBytes));
+        final newTask = Task.fromJson(data);
+        Provider.of<AppStateManager>(context, listen: false).setDailyTask(newTask);
+        
+        // If this task was from stock, remove it from stock
+        if (isFromStock) {
+          try {
+            final deleteUrl = Uri.parse('http://localhost:8000/stock/${task.id}');
+            await http.delete(deleteUrl);
+          } catch (e) {
+            // Ignore deletion errors since the main action (setting daily task) succeeded
+          }
+        }
+        
+        if (!context.mounted) return;
+        
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('今日のタスクを変更しました！'),
