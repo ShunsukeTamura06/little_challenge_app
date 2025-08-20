@@ -100,7 +100,27 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
       itemBuilder: (context, index) {
         final task = _searchResults[index];
         return ListTile(
-          title: Text(task.title),
+          title: Row(
+            children: [
+              Expanded(child: Text(task.title)),
+              if (task.isCompleted == true)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.green,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Text(
+                    '完了済み',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+            ],
+          ),
           subtitle: Text(task.tags.join(', ')),
           trailing: const Icon(Icons.arrow_forward_ios, size: 16),
           onTap: () {

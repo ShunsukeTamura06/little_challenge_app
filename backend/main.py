@@ -199,11 +199,14 @@ def get_categories(db: Session = Depends(get_db)):
     categories = db.query(Category).order_by(Category.name).all()
     return categories
 
-@app.get("/challenges/search", response_model=List[ChallengeResponse])
+@app.get("/challenges/search")
 def search_challenges(q: Optional[str] = None, category_id: Optional[int] = None, db: Session = Depends(get_db)):
     """
     Searches for challenges based on a query string or category.
+    Returns challenges with completion status for the current user.
     """
+    user_id = "user_123"  # Fixed user_id for now
+    
     query = db.query(Challenge).options(joinedload(Challenge.category))
     
     if q:
@@ -213,7 +216,29 @@ def search_challenges(q: Optional[str] = None, category_id: Optional[int] = None
         query = query.filter(Challenge.category_id == category_id)
         
     results = query.all()
-    return results
+    
+    # Get completed challenge IDs for this user
+    completed_ids = {
+        achievement.challenge_id for achievement in 
+        db.query(Achievement).filter(Achievement.user_id == user_id).all()
+    }
+    
+    # Format results with completion status
+    formatted_results = []
+    for challenge in results:
+        formatted_results.append({
+            "id": challenge.id,
+            "title": challenge.title,
+            "description": challenge.description,
+            "difficulty": challenge.difficulty,
+            "category": {
+                "id": challenge.category.id,
+                "name": challenge.category.name
+            },
+            "is_completed": challenge.id in completed_ids
+        })
+    
+    return formatted_results
 
 @app.get("/challenges", response_model=List[ChallengeResponse])
 def get_challenges(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
