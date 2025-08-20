@@ -99,6 +99,20 @@ class _StockScreenState extends State<StockScreen> {
         final newTask = Task.fromJson(data);
         Provider.of<AppStateManager>(context, listen: false).setDailyTask(newTask);
         
+        // Remove the task from local stock list
+        setState(() {
+          _stockedTasks.removeWhere((task) => task.id == taskId);
+        });
+        
+        // Delete the task from stock in the backend (silently)
+        try {
+          final deleteUrl = Uri.parse('http://localhost:8000/stock/$taskId');
+          await http.delete(deleteUrl);
+        } catch (e) {
+          // Ignore deletion errors since the main action (setting daily task) succeeded
+          print('Warning: Failed to delete task from stock: $e');
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('今日のタスクを変更しました！'),
