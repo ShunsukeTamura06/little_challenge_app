@@ -121,7 +121,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _onStockItTapped() async {
-    final task = Provider.of<AppStateManager>(context, listen: false).dailyTask;
+    final appState = Provider.of<AppStateManager>(context, listen: false);
+    final task = appState.dailyTask;
     if (task == null) return;
 
     final url = Uri.parse('http://localhost:8000/stock');
@@ -138,9 +139,13 @@ class _HomeScreenState extends State<HomeScreen> {
           const SnackBar(
             content: Text('ストックに追加しました'),
             backgroundColor: Colors.teal,
+            duration: Duration(seconds: 2),
           ),
         );
+        // Fetch new task for home screen in the background
         await _fetchDailyTask(forceRefresh: true);
+        // Switch to stock tab
+        appState.goToTab(2);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
