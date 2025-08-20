@@ -219,41 +219,53 @@ class _HomeScreenState extends State<HomeScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Card(
-              color: theme.colorScheme.surface,
-              elevation: 2,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  children: [
-                    Text(
-                      task.title,
-                      style: textTheme.titleLarge,
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 16),
-                    Wrap(
-                      spacing: 8.0,
-                      runSpacing: 4.0,
-                      alignment: WrapAlignment.center,
-                      children: task.tags
-                          .map((tag) => Chip(label: Text(tag, style: textTheme.bodyMedium)))
-                          .toList(),
-                    ),
-                    const SizedBox(height: 24),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.people_alt_outlined, color: textTheme.bodyMedium?.color),
-                        const SizedBox(width: 8),
-                        Text(
-                          "全ユーザーの${(task.completionRate! * 100).toStringAsFixed(0)}%が達成",
-                          style: textTheme.bodyMedium,
-                        ),
-                      ],
-                    )
-                  ],
+            Dismissible(
+              key: ValueKey(task.id),
+              onDismissed: (direction) {
+                _fetchDailyTask(forceRefresh: true);
+              },
+              background: Container(
+                color: Colors.transparent, // Make background transparent
+              ),
+              secondaryBackground: Container(
+                color: Colors.transparent,
+              ),
+              child: Card(
+                color: theme.colorScheme.surface,
+                elevation: 2,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    children: [
+                      Text(
+                        task.title,
+                        style: textTheme.titleLarge,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      Wrap(
+                        spacing: 8.0,
+                        runSpacing: 4.0,
+                        alignment: WrapAlignment.center,
+                        children: task.tags
+                            .map((tag) => Chip(label: Text(tag, style: textTheme.bodyMedium))))
+                            .toList(),
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.people_alt_outlined, color: textTheme.bodyMedium?.color),
+                          const SizedBox(width: 8),
+                          Text(
+                            "全ユーザーの${(task.completionRate! * 100).toStringAsFixed(0)}%が達成",
+                            style: textTheme.bodyMedium,
+                          ),
+                        ],
+                      )
+                    ],
+                  ),
                 ),
               ),
             ),
