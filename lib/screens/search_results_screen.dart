@@ -41,7 +41,8 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
     }
 
     if (queryParams.isNotEmpty) {
-      url += '?' + Uri.encodeQueryComponent(queryParams.entries.map((e) => '${e.key}=${e.value}').join('&'));
+      final uri = Uri.parse(url).replace(queryParameters: queryParams);
+      url = uri.toString();
     }
 
     try {
