@@ -48,6 +48,15 @@ class Achievement(Base):
     created_at = Column(DateTime, default=func.now(), nullable=False)
     challenge = relationship("Challenge")
 
+# stocksテーブル用の新しいモデル
+class Stock(Base):
+    __tablename__ = "stocks"
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, nullable=False)
+    challenge_id = Column(Integer, ForeignKey("challenges.id"), nullable=False)
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+    challenge = relationship("Challenge")
+
 # --- Pydanticモデル ---
 from pydantic import BaseModel
 from typing import Optional
@@ -218,38 +227,69 @@ class StockResponse(BaseModel):
 def create_stock(stock: StockCreate, db: Session = Depends(get_db)):
     """
     Adds a task to the user's stock.
-    (Currently a dummy implementation)
     """
-    # TODO: Implement actual database logic to store the stocked task
-    # For now, just log it and return a success response.
-    print(f"Task ID {stock.task_id} received to be stocked.")
-
-    # Dummy response
+    user_id = "user_123"  # Fixed user_id for now
+    
+    # Check if challenge exists
+    challenge = db.query(Challenge).filter(Challenge.id == stock.task_id).first()
+    if not challenge:
+        raise HTTPException(status_code=404, detail="Challenge not found")
+    
+    # Check if already stocked
+    existing_stock = db.query(Stock).filter(
+        Stock.user_id == user_id,
+        Stock.challenge_id == stock.task_id
+    ).first()
+    if existing_stock:
+        raise HTTPException(status_code=400, detail="Task is already stocked")
+    
+    # Create new stock entry
+    db_stock = Stock(
+        user_id=user_id,
+        challenge_id=stock.task_id
+    )
+    db.add(db_stock)
+    db.commit()
+    db.refresh(db_stock)
+    
     return {
-        "stock_id": f"stock_{uuid.uuid4()}",
+        "stock_id": db_stock.id,
         "message": f"Task {stock.task_id} has been successfully stocked."
     }
 
 @app.delete("/stock/{task_id}", status_code=204)
 def delete_stock(task_id: int, db: Session = Depends(get_db)):
-    """ストックからタスクを削除する（ダミー実装）"""
-    print(f"Request to delete stocked task with id: {task_id}")
-    # ここに実際のデータベースからの削除ロジックを実装します
+    """ストックからタスクを削除する"""
+    user_id = "user_123"  # Fixed user_id for now
+    
+    # Find and delete the stock entry
+    stock_entry = db.query(Stock).filter(
+        Stock.user_id == user_id,
+        Stock.challenge_id == task_id
+    ).first()
+    
+    if not stock_entry:
+        raise HTTPException(status_code=404, detail="Stocked task not found")
+    
+    db.delete(stock_entry)
+    db.commit()
     return
 
 @app.get("/stock", response_model=List[ChallengeResponse])
 def get_stock(db: Session = Depends(get_db)):
     """
-    Retrieves the list of stocked tasks.
-    (Currently returns a dummy list of challenges)
+    Retrieves the list of stocked tasks for the user.
     """
-    # TODO: Implement actual logic to retrieve stocked tasks for the user.
-    # For now, return a few random challenges as dummy data.
-    dummy_stocked_tasks = db.query(Challenge).options(joinedload(Challenge.category)).order_by(func.random()).limit(3).all()
-    if not dummy_stocked_tasks:
-        # If the database is empty, return an empty list.
-        return []
-    return dummy_stocked_tasks
+    user_id = "user_123"  # Fixed user_id for now
+    
+    # Get stocked challenges with their categories
+    stocked_challenges = db.query(Challenge).join(Stock).options(
+        joinedload(Challenge.category)
+    ).filter(
+        Stock.user_id == user_id
+    ).order_by(Stock.created_at.desc()).all()
+    
+    return stocked_challenges
 
 class TaskReplaceRequest(BaseModel):
     new_task_id: int

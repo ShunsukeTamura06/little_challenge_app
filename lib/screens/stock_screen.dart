@@ -94,6 +94,11 @@ class _StockScreenState extends State<StockScreen> {
       if (!mounted) return;
 
       if (response.statusCode == 200) {
+        // Update the daily task in the app state
+        final data = json.decode(utf8.decode(response.bodyBytes));
+        final newTask = Task.fromJson(data);
+        Provider.of<AppStateManager>(context, listen: false).setDailyTask(newTask);
+        
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('今日のタスクを変更しました！'),
@@ -214,10 +219,10 @@ class _StockScreenState extends State<StockScreen> {
             padding: const EdgeInsets.all(16.0),
             child: OutlinedButton(
               onPressed: _proposeRandomTask,
-              child: const Text('ストックからランダムに提案'),
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 48), // make button wider
               ),
+              child: const Text('ストックからランダムに提案'),
             ),
           ),
           const Divider(),

@@ -24,6 +24,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = false;
   String? _errorMessage;
   bool _showUndoPanel = false;
+  bool _isStocking = false; // Flag for stock animation
   Timer? _undoTimer;
 
   @override
@@ -123,7 +124,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _onStockItTapped() async {
     final appState = Provider.of<AppStateManager>(context, listen: false);
     final task = appState.dailyTask;
-    if (task == null) return;
+    if (task == null || _isStocking) return;
 
     final url = Uri.parse('http://localhost:8000/stock');
     final headers = {'Content-Type': 'application/json'};
@@ -142,10 +143,23 @@ class _HomeScreenState extends State<HomeScreen> {
             duration: Duration(seconds: 2),
           ),
         );
-        // Fetch new task for home screen in the background
+        
+        // Switch to stock tab as per specification
+        Provider.of<AppStateManager>(context, listen: false).goToTab(2);
+        
+        setState(() {
+          _isStocking = true;
+        });
+
+        await Future.delayed(const Duration(milliseconds: 300));
         await _fetchDailyTask(forceRefresh: true);
-        // Switch to stock tab
-        appState.goToTab(2);
+
+        if (mounted) {
+          setState(() {
+            _isStocking = false;
+          });
+        }
+
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -236,9 +250,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
 
-    // Hide the main task view when the undo panel is shown
+    // Hide the main task view when the undo panel is shown or when stocking
     return AnimatedOpacity(
-      opacity: _showUndoPanel ? 0.0 : 1.0,
+      opacity: _showUndoPanel || _isStocking ? 0.0 : 1.0,
       duration: const Duration(milliseconds: 200),
       child: Padding(
         padding: const EdgeInsets.all(16.0),

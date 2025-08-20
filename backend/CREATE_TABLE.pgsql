@@ -40,3 +40,12 @@ CREATE TABLE achievements (
     rating SMALLINT CHECK (rating BETWEEN 1 AND 5), -- 5段階評価
     achieved_at TIMESTAMPTZ NOT NULL DEFAULT now() -- 達成日時
 );
+
+-- 6. ユーザーがストックしたチャレンジを格納するテーブル
+CREATE TABLE stocks (
+    id UUID PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id),
+    challenge_id INTEGER NOT NULL REFERENCES challenges(id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(), -- ストック作成日時
+    UNIQUE (user_id, challenge_id) -- 同じチャレンジを重複してストックしないようにする
+);
