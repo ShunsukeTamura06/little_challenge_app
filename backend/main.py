@@ -1,8 +1,10 @@
 # backend/main.py
 
+from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, func, DateTime
 from sqlalchemy.orm import sessionmaker, Session, declarative_base, relationship, joinedload
-from typing import List
+from typing import List, Optional
+from collections import defaultdict
 import uuid
 import random
 from datetime import datetime
@@ -130,11 +132,49 @@ def create_log(log: LogCreate, db: Session = Depends(get_db)):
     
     return {"log_id": db_log.id, "message": "Successfully created."}
 
-@app.get("/logs", response_model=List[AchievementResponse])
-def get_logs(db: Session = Depends(get_db)):
+
+@app.get("/logs")
+def get_logs(month: Optional[str] = None, db: Session = Depends(get_db)):
+    """指定した月の達成ログを取得する"""
     user_id = "user_123"
-    logs = db.query(Achievement).filter(Achievement.user_id == user_id).order_by(Achievement.id.desc()).all()
-    return logs
+    query = db.query(Achievement).options(joinedload(Achievement.challenge).joinedload(Challenge.category)).filter(Achievement.user_id == user_id)
+
+    if month:
+        try:
+            year, mon = map(int, month.split('-'))
+            start_date = datetime(year, mon, 1)
+            end_date = datetime(year, mon + 1, 1) if mon < 12 else datetime(year + 1, 1, 1)
+            query = query.filter(Achievement.created_at >= start_date, Achievement.created_at < end_date)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid month format. Use YYYY-MM.")
+
+    logs = query.order_by(Achievement.created_at.desc()).all()
+
+    def achievement_to_dict(achievement: Achievement):
+        return {
+            "id": achievement.id,
+            "user_id": achievement.user_id,
+            "memo": achievement.memo,
+            "feeling": achievement.feeling,
+            "created_at": achievement.created_at.isoformat(),
+            "challenge": {
+                "id": achievement.challenge.id,
+                "title": achievement.challenge.title,
+                "description": achievement.challenge.description,
+                "difficulty": achievement.challenge.difficulty,
+                "category": {
+                    "id": achievement.challenge.category.id,
+                    "name": achievement.challenge.category.name,
+                }
+            }
+        }
+
+    grouped_logs = defaultdict(list)
+    for log in logs:
+        date_str = log.created_at.strftime('%Y-%m-%d')
+        grouped_logs[date_str].append(achievement_to_dict(log))
+
+    return grouped_logs
 
 @app.get("/categories", response_model=List[CategoryResponse])
 def get_categories(db: Session = Depends(get_db)):

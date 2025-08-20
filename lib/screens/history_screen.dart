@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../models/task.dart';
 
@@ -51,8 +52,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
-    _selectedEvents = ValueNotifier(_getEventsForDay(_selectedDay!));
-    _fetchLogs();
+    _selectedEvents = ValueNotifier([]);
+    _fetchLogsForMonth(_focusedDay);
   }
 
   @override
@@ -67,30 +68,31 @@ class _HistoryScreenState extends State<HistoryScreen> {
     return _logsByDate[dayUtc] ?? [];
   }
 
-  Future<void> _fetchLogs() async {
+  Future<void> _fetchLogsForMonth(DateTime month) async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
-    const url = 'http://localhost:8000/logs';
-    try {
-      final response = await http.get(Uri.parse(url));
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(utf8.decode(response.bodyBytes));
-        final List<LogEntry> logs = data.map((item) => LogEntry.fromJson(item)).toList();
+    final monthFormat = DateFormat('yyyy-MM');
+    final formattedMonth = monthFormat.format(month);
+    final url = Uri.parse('http://localhost:8000/logs?month=$formattedMonth');
 
+    try {
+      final response = await http.get(Uri.parse(url.toString()));
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(utf8.decode(response.bodyBytes));
+        
         final Map<DateTime, List<LogEntry>> groupedLogs = {};
-        for (var log in logs) {
-          final day = DateTime.utc(log.createdAt.year, log.createdAt.month, log.createdAt.day);
-          if (groupedLogs[day] == null) {
-            groupedLogs[day] = [];
-          }
-          groupedLogs[day]!.add(log);
-        }
+        data.forEach((dateString, logsJson) {
+          final date = DateTime.parse(dateString);
+          final dayUtc = DateTime.utc(date.year, date.month, date.day);
+          final entries = (logsJson as List).map((item) => LogEntry.fromJson(item)).toList();
+          groupedLogs[dayUtc] = entries;
+        });
 
         setState(() {
-          _logsByDate = groupedLogs;
+          _logsByDate.addAll(groupedLogs); // Merge with existing data
           _isLoading = false;
           _selectedEvents.value = _getEventsForDay(_selectedDay!);
         });
@@ -118,6 +120,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
     }
   }
 
+  void _onPageChanged(DateTime focusedDay) {
+    _focusedDay = focusedDay;
+    // Check if we already have data for the new month to avoid redundant API calls
+    final firstDayOfMonth = DateTime.utc(focusedDay.year, focusedDay.month, 1);
+    if (!_logsByDate.keys.any((d) => d.year == firstDayOfMonth.year && d.month == firstDayOfMonth.month)) {
+       _fetchLogsForMonth(focusedDay);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -130,12 +141,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ? Center(child: Text(_errorMessage!))
               : Column(
                   children: [
+                    _buildSummaryPanel(),
                     TableCalendar<LogEntry>(
                       firstDay: DateTime.utc(2020, 1, 1),
                       lastDay: DateTime.utc(2030, 12, 31),
                       focusedDay: _focusedDay,
                       selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
                       onDaySelected: _onDaySelected,
+                      onPageChanged: _onPageChanged,
                       eventLoader: _getEventsForDay,
                       calendarStyle: const CalendarStyle(
                         markerDecoration: BoxDecoration(
@@ -164,6 +177,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                 leading: Text(log.feeling ?? '📝', style: const TextStyle(fontSize: 24)),
                                 title: Text(log.challenge.title),
                                 subtitle: log.memo != null && log.memo!.isNotEmpty ? Text(log.memo!) : null,
+                                onTap: () {
+                                  // TODO: Navigate to Task Detail Screen [SCR-007]
+                                },
                               );
                             },
                           );
@@ -172,6 +188,35 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     ),
                   ],
                 ),
+    );
+  }
+
+  Widget _buildSummaryPanel() {
+    final totalAchievements = _logsByDate.values.expand((i) => i).length;
+    // TODO: Calculate streak
+    const streak = 0; 
+
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          Column(
+            children: [
+              Text('合計達成数', style: Theme.of(context).textTheme.bodyMedium),
+              const SizedBox(height: 4),
+              Text('$totalAchievements', style: Theme.of(context).textTheme.headlineMedium),
+            ],
+          ),
+          Column(
+            children: [
+              Text('連続記録', style: Theme.of(context).textTheme.bodyMedium),
+              const SizedBox(height: 4),
+              Text('$streak日', style: Theme.of(context).textTheme.headlineMedium),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
