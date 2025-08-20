@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
@@ -5,8 +6,13 @@ import 'package:http/http.dart' as http;
 
 class AchievementReportScreen extends StatefulWidget {
   final String taskId;
+  final bool showUndoOption;
 
-  const AchievementReportScreen({super.key, required this.taskId});
+  const AchievementReportScreen({
+    super.key, 
+    required this.taskId,
+    this.showUndoOption = false,
+  });
 
   @override
   State<AchievementReportScreen> createState() => _AchievementReportScreenState();
@@ -18,6 +24,8 @@ class _AchievementReportScreenState extends State<AchievementReportScreen> {
   String? _selectedFeeling;
   final _memoController = TextEditingController();
   bool _isSubmitting = false;
+  bool _showUndoPanel = false;
+  Timer? _undoTimer;
 
   final Map<String, String> _feelings = {
     '😄': '嬉しい',
@@ -31,13 +39,31 @@ class _AchievementReportScreenState extends State<AchievementReportScreen> {
   void initState() {
     super.initState();
     _confettiController = ConfettiController(duration: const Duration(seconds: 1));
+    
+    // Show undo panel for 5 seconds if showUndoOption is true
+    if (widget.showUndoOption) {
+      _showUndoPanel = true;
+      _undoTimer = Timer(const Duration(seconds: 5), () {
+        if (mounted) {
+          setState(() {
+            _showUndoPanel = false;
+          });
+        }
+      });
+    }
   }
 
   @override
   void dispose() {
     _confettiController.dispose();
     _memoController.dispose();
+    _undoTimer?.cancel();
     super.dispose();
+  }
+
+  void _cancelAchievement() {
+    _undoTimer?.cancel();
+    Navigator.of(context).pop('cancelled');
   }
 
   Future<void> _submitReport({String? feeling}) async {
@@ -114,6 +140,36 @@ class _AchievementReportScreenState extends State<AchievementReportScreen> {
               emissionFrequency: 0.05,
             ),
           ),
+          // Undo Panel
+          if (_showUndoPanel)
+            Positioned(
+              bottom: 16,
+              left: 16,
+              right: 16,
+              child: Material(
+                elevation: 4,
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF4CAF50), // System Success Green
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.check_circle, color: Colors.white),
+                      const SizedBox(width: 12),
+                      const Text('🎉達成しました！', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      const Spacer(),
+                      TextButton(
+                        onPressed: _cancelAchievement,
+                        child: const Text('取り消す', style: TextStyle(color: Colors.white, decoration: TextDecoration.underline)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );

@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -10,9 +9,6 @@ import '../providers/app_state_manager.dart';
 import 'achievement_report_screen.dart';
 import '../models/task.dart';
 
-import 'package:little_challenge_app/providers/app_state_manager.dart';
-import 'package:provider/provider.dart';
-
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -23,9 +19,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = false;
   String? _errorMessage;
-  bool _showUndoPanel = false;
   bool _isStocking = false; // Flag for stock animation
-  Timer? _undoTimer;
 
   @override
   void initState() {
@@ -42,7 +36,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
-    _undoTimer?.cancel();
     super.dispose();
   }
 
@@ -86,40 +79,22 @@ class _HomeScreenState extends State<HomeScreen> {
     final task = Provider.of<AppStateManager>(context, listen: false).dailyTask;
     if (task == null) return;
 
-    setState(() {
-      _showUndoPanel = true;
-    });
-
-    _undoTimer?.cancel();
-    _undoTimer = Timer(const Duration(seconds: 5), () {
-      _triggerAchievementFlow();
-    });
-  }
-
-  void _triggerAchievementFlow() {
-    if (!_showUndoPanel || !mounted) return;
-    final task = Provider.of<AppStateManager>(context, listen: false).dailyTask;
-
-    setState(() {
-      _showUndoPanel = false;
-    });
-
+    // Navigate immediately to achievement report screen
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => AchievementReportScreen(taskId: task!.id),
+        builder: (context) => AchievementReportScreen(
+          taskId: task.id,
+          showUndoOption: true,
+        ),
         fullscreenDialog: true,
       ),
-    ).then((_) {
-      _fetchDailyTask(forceRefresh: true);
+    ).then((result) {
+      if (result != 'cancelled') {
+        _fetchDailyTask(forceRefresh: true);
+      }
     });
   }
 
-  void _cancelAchievement() {
-    _undoTimer?.cancel();
-    setState(() {
-      _showUndoPanel = false;
-    });
-  }
 
   Future<void> _onStockItTapped() async {
     final appState = Provider.of<AppStateManager>(context, listen: false);
@@ -201,55 +176,48 @@ class _HomeScreenState extends State<HomeScreen> {
     final appState = Provider.of<AppStateManager>(context);
     final task = appState.dailyTask;
 
-    return Stack(
-      children: [
-        if (_isLoading && task == null)
-          const Center(child: CircularProgressIndicator())
-        else if (_errorMessage != null)
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(_errorMessage!, textAlign: TextAlign.center),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () => _fetchDailyTask(),
-                  child: const Text('再試行'),
-                ),
-              ],
+    if (_isLoading && task == null) {
+      return const Center(child: CircularProgressIndicator());
+    } else if (_errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(_errorMessage!, textAlign: TextAlign.center),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => _fetchDailyTask(),
+              child: const Text('再試行'),
             ),
-          )
-        else if (task == null)
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text("今日のタスクはありませんでした。", textAlign: TextAlign.center),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () => _fetchDailyTask(),
-                  child: const Text('再読み込み'),
-                ),
-              ],
+          ],
+        ),
+      );
+    } else if (task == null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text("今日のタスクはありませんでした。", textAlign: TextAlign.center),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => _fetchDailyTask(),
+              child: const Text('再読み込み'),
             ),
-          )
-        else
-          _buildTaskView(context, task),
-        
-        // Undo Panel
-        if (_showUndoPanel)
-          _buildUndoPanel(context),
-      ],
-    );
+          ],
+        ),
+      );
+    } else {
+      return _buildTaskView(context, task);
+    }
   }
 
   Widget _buildTaskView(BuildContext context, Task task) {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
 
-    // Hide the main task view when the undo panel is shown or when stocking
+    // Hide the main task view when stocking
     return AnimatedOpacity(
-      opacity: _showUndoPanel || _isStocking ? 0.0 : 1.0,
+      opacity: _isStocking ? 0.0 : 1.0,
       duration: const Duration(milliseconds: 200),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -341,35 +309,4 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildUndoPanel(BuildContext context) {
-    final theme = Theme.of(context);
-    return Positioned(
-      bottom: 16,
-      left: 16,
-      right: 16,
-      child: Material(
-        elevation: 4,
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: const Color(0xFF4CAF50), // System Success Green
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.check_circle, color: Colors.white),
-              const SizedBox(width: 12),
-              const Text('🎉達成しました！', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              const Spacer(),
-              TextButton(
-                onPressed: _cancelAchievement,
-                child: const Text('取り消す', style: TextStyle(color: Colors.white, decoration: TextDecoration.underline)),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
