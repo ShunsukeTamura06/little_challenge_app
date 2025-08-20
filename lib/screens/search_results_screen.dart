@@ -1,9 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:provider/provider.dart';
 import '../models/task.dart';
-import '../providers/app_state_manager.dart';
 import 'challenge_detail_screen.dart';
 
 class SearchResultsScreen extends StatefulWidget {
@@ -72,59 +70,23 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<AppStateManager>(
-      builder: (context, appState, child) {
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text('検索結果'),
-          ),
-          body: _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : _errorMessage != null
-                  ? Center(
-                      child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(_errorMessage!),
-                        const SizedBox(height: 16),
-                        ElevatedButton(onPressed: _performSearch, child: const Text('再試行')),
-                      ],
-                    ))
-                  : _buildSearchResults(),
-          bottomNavigationBar: BottomNavigationBar(
-            type: BottomNavigationBarType.fixed,
-            items: const <BottomNavigationBarItem>[
-              BottomNavigationBarItem(
-                icon: Icon(Icons.home),
-                label: 'ホーム',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.search),
-                label: '探す',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.inventory_2_outlined),
-                label: 'ストック',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.edit_calendar_outlined),
-                label: 'ログ',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.person_outline),
-                label: 'マイタスク',
-              ),
-            ],
-            currentIndex: appState.selectedIndex,
-            selectedItemColor: Theme.of(context).primaryColor,
-            unselectedItemColor: const Color(0xFF757575),
-            onTap: (index) {
-              Provider.of<AppStateManager>(context, listen: false).goToTab(index);
-              Navigator.of(context).pop();
-            },
-          ),
-        );
-      },
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('検索結果'),
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _errorMessage != null
+              ? Center(
+                  child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(_errorMessage!),
+                    const SizedBox(height: 16),
+                    ElevatedButton(onPressed: _performSearch, child: const Text('再試行')),
+                  ],
+                ))
+              : _buildSearchResults(),
     );
   }
 
