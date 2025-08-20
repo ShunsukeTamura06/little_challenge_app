@@ -190,6 +190,13 @@ def create_stock(stock: StockCreate, db: Session = Depends(get_db)):
         "message": f"Task {stock.task_id} has been successfully stocked."
     }
 
+@app.delete("/stock/{task_id}", status_code=204)
+def delete_stock(task_id: int, db: Session = Depends(get_db)):
+    """ストックからタスクを削除する（ダミー実装）"""
+    print(f"Request to delete stocked task with id: {task_id}")
+    # ここに実際のデータベースからの削除ロジックを実装します
+    return
+
 @app.get("/stock", response_model=List[ChallengeResponse])
 def get_stock(db: Session = Depends(get_db)):
     """

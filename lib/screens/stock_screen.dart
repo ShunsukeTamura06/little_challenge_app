@@ -1,5 +1,6 @@
 
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
@@ -120,6 +121,50 @@ class _StockScreenState extends State<StockScreen> {
     }
   }
 
+  Future<void> _deleteStockedTask(String taskId) async {
+    final url = Uri.parse('http://localhost:8000/stock/$taskId');
+
+    try {
+      final response = await http.delete(url);
+
+      if (!mounted) return;
+
+      if (response.statusCode == 204) {
+        setState(() {
+          _stockedTasks.removeWhere((task) => task.id == taskId);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('タスクを削除しました'),
+            action: SnackBarAction(
+              label: '元に戻す',
+              onPressed: () {
+                // For simplicity, just refetch the list.
+                // A more sophisticated implementation would re-insert the task locally.
+                _fetchStockedTasks();
+              },
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('削除に失敗しました (Code: ${response.statusCode})'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('エラーが発生しました: $e'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -162,23 +207,59 @@ class _StockScreenState extends State<StockScreen> {
 
     return RefreshIndicator(
       onRefresh: _fetchStockedTasks,
-      child: ListView.builder(
-        itemCount: _stockedTasks.length,
-        itemBuilder: (context, index) {
-          final task = _stockedTasks[index];
-          return ListTile(
-            title: Text(task.title),
-            subtitle: Wrap(
-              spacing: 6.0,
-              children: task.tags.map((tag) => Chip(label: Text(tag))).toList(),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: OutlinedButton(
+              onPressed: _proposeRandomTask,
+              child: const Text('ストックからランダムに提案'),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 48), // make button wider
+              ),
             ),
-            trailing: TextButton(
-              child: const Text('今日やる'),
-              onPressed: () => _setAsDailyTask(task.id, task.title),
+          ),
+          const Divider(),
+          Expanded(
+            child: ListView.builder(
+              itemCount: _stockedTasks.length,
+              itemBuilder: (context, index) {
+                final task = _stockedTasks[index];
+                return Dismissible(
+                  key: ValueKey(task.id),
+                  direction: DismissDirection.endToStart,
+                  onDismissed: (direction) {
+                    _deleteStockedTask(task.id);
+                  },
+                  background: Container(
+                    color: Colors.red,
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                    child: const Icon(Icons.delete, color: Colors.white),
+                  ),
+                  child: ListTile(
+                    title: Text(task.title),
+                    subtitle: Wrap(
+                      spacing: 6.0,
+                      children: task.tags.map((tag) => Chip(label: Text(tag))).toList(),
+                    ),
+                    trailing: TextButton(
+                      child: const Text('今日やる'),
+                      onPressed: () => _setAsDailyTask(task.id, task.title),
+                    ),
+                  ),
+                );
+              },
             ),
-          );
-        },
+          ),
+        ],
       ),
     );
+  }
+
+  void _proposeRandomTask() {
+    if (_stockedTasks.isEmpty) return;
+    final randomTask = _stockedTasks[Random().nextInt(_stockedTasks.length)];
+    _setAsDailyTask(randomTask.id, randomTask.title);
   }
 }
