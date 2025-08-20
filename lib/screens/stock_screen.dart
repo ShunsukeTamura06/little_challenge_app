@@ -110,25 +110,29 @@ class _StockScreenState extends State<StockScreen> {
           await http.delete(deleteUrl);
         } catch (e) {
           // Ignore deletion errors since the main action (setting daily task) succeeded
-          print('Warning: Failed to delete task from stock: $e');
+          // In production, use a proper logging framework instead of print
         }
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('今日のタスクを変更しました！'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
-          ),
-        );
-        // Switch to the home tab
-        Provider.of<AppStateManager>(context, listen: false).goToTab(0);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('今日のタスクを変更しました！'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
+          );
+          // Switch to the home tab
+          Provider.of<AppStateManager>(context, listen: false).goToTab(0);
+        }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('タスクの変更に失敗しました (Code: ${response.statusCode})'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('タスクの変更に失敗しました (Code: ${response.statusCode})'),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+          );
+        }
       }
     } catch (e) {
       if (!mounted) return;
