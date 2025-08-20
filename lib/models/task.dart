@@ -1,13 +1,17 @@
 class Task {
   final String id;
   final String title;
+  final String? description;
   final List<String> tags;
+  final int? difficulty;
   final double? completionRate; // Nullable for tasks from stock etc.
 
   Task({
     required this.id,
     required this.title,
+    this.description,
     required this.tags,
+    this.difficulty,
     this.completionRate,
   });
 
@@ -27,7 +31,9 @@ class Task {
     return Task(
       id: json['id'].toString(),
       title: json['title'] as String,
+      description: json['description'] as String?,
       tags: tags,
+      difficulty: json['difficulty'] as int?,
       completionRate: completionRate,
     );
   }

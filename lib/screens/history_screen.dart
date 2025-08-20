@@ -6,6 +6,8 @@ import 'package:table_calendar/table_calendar.dart';
 import '../models/task.dart';
 
 // A model for the log entry, adapted from the backend response
+import 'package:little_challenge_app/screens/challenge_detail_screen.dart';
+
 class LogEntry {
   final String id;
   final Task challenge;
@@ -178,7 +180,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                 title: Text(log.challenge.title),
                                 subtitle: log.memo != null && log.memo!.isNotEmpty ? Text(log.memo!) : null,
                                 onTap: () {
-                                  // TODO: Navigate to Task Detail Screen [SCR-007]
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (context) => ChallengeDetailScreen(task: log.challenge),
+                                    ),
+                                  );
                                 },
                               );
                             },

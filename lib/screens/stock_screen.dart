@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import '../models/task.dart';
 import '../providers/app_state_manager.dart';
+import 'challenge_detail_screen.dart';
 
 class StockScreen extends StatefulWidget {
   const StockScreen({super.key});
@@ -247,6 +248,13 @@ class _StockScreenState extends State<StockScreen> {
                       child: const Text('今日やる'),
                       onPressed: () => _setAsDailyTask(task.id, task.title),
                     ),
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => ChallengeDetailScreen(task: task),
+                        ),
+                      );
+                    },
                   ),
                 );
               },
