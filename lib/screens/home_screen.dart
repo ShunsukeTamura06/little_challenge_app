@@ -300,7 +300,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           Icon(Icons.people_alt_outlined, color: textTheme.bodyMedium?.color),
                           const SizedBox(width: 8),
                           Text(
-                            "全ユーザーの${(task.completionRate! * 100).toStringAsFixed(0)}%が達成",
+                            "全ユーザーの${((task.completionRate ?? 0.0) * 100).toStringAsFixed(0)}%が達成",
                             style: textTheme.bodyMedium,
                           ),
                         ],
