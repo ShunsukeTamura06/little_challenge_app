@@ -32,12 +32,13 @@ CREATE TABLE user_category_preferences (
 
 -- 5. ユーザーの達成記録を格納するテーブル
 CREATE TABLE achievements (
-    id UUID PRIMARY KEY,
-    user_id UUID NOT NULL REFERENCES users(id),
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    user_id TEXT NOT NULL, -- 簡単のためTEXT型を使用（本来はUUIDでusers(id)への参照）
     challenge_id INTEGER NOT NULL REFERENCES challenges(id),
     memo TEXT, -- ユーザーが残したメモ
     photo_url TEXT, -- アップロードされた写真のURL
     rating SMALLINT CHECK (rating BETWEEN 1 AND 5), -- 5段階評価
+    feeling TEXT, -- ユーザーが選択した感情
     achieved_at TIMESTAMPTZ NOT NULL DEFAULT now() -- 達成日時
 );
 

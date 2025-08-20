@@ -44,8 +44,10 @@ class Achievement(Base):
     user_id = Column(String, nullable=False) # 簡単のため、一旦文字列として扱う
     challenge_id = Column(Integer, ForeignKey("challenges.id"), nullable=False)
     memo = Column(String, nullable=True)
+    photo_url = Column(String, nullable=True)
+    rating = Column(Integer, nullable=True)
     feeling = Column(String, nullable=True)
-    created_at = Column(DateTime, default=func.now(), nullable=False)
+    achieved_at = Column(DateTime, default=func.now(), nullable=False)
     challenge = relationship("Challenge")
 
 # stocksテーブル用の新しいモデル
@@ -89,8 +91,10 @@ class AchievementResponse(BaseModel):
     user_id: str
     challenge: ChallengeResponse
     memo: Optional[str] = None
+    photo_url: Optional[str] = None
+    rating: Optional[int] = None
     feeling: Optional[str] = None
-    created_at: datetime
+    achieved_at: datetime
     class Config: from_attributes = True
 
 
@@ -153,11 +157,11 @@ def get_logs(month: Optional[str] = None, db: Session = Depends(get_db)):
             year, mon = map(int, month.split('-'))
             start_date = datetime(year, mon, 1)
             end_date = datetime(year, mon + 1, 1) if mon < 12 else datetime(year + 1, 1, 1)
-            query = query.filter(Achievement.created_at >= start_date, Achievement.created_at < end_date)
+            query = query.filter(Achievement.achieved_at >= start_date, Achievement.achieved_at < end_date)
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid month format. Use YYYY-MM.")
 
-    logs = query.order_by(Achievement.created_at.desc()).all()
+    logs = query.order_by(Achievement.achieved_at.desc()).all()
 
     def achievement_to_dict(achievement: Achievement):
         return {
@@ -165,7 +169,7 @@ def get_logs(month: Optional[str] = None, db: Session = Depends(get_db)):
             "user_id": achievement.user_id,
             "memo": achievement.memo,
             "feeling": achievement.feeling,
-            "created_at": achievement.created_at.isoformat(),
+            "achieved_at": achievement.achieved_at.isoformat(),
             "challenge": {
                 "id": achievement.challenge.id,
                 "title": achievement.challenge.title,
@@ -180,7 +184,7 @@ def get_logs(month: Optional[str] = None, db: Session = Depends(get_db)):
 
     grouped_logs = defaultdict(list)
     for log in logs:
-        date_str = log.created_at.strftime('%Y-%m-%d')
+        date_str = log.achieved_at.strftime('%Y-%m-%d')
         grouped_logs[date_str].append(achievement_to_dict(log))
 
     return grouped_logs
