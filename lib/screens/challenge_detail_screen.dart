@@ -8,8 +8,14 @@ import '../providers/app_state_manager.dart';
 class ChallengeDetailScreen extends StatelessWidget {
   final Task task;
   final bool isFromStock;
+  final bool isFromHome;
 
-  const ChallengeDetailScreen({super.key, required this.task, this.isFromStock = false});
+  const ChallengeDetailScreen({
+    super.key, 
+    required this.task, 
+    this.isFromStock = false,
+    this.isFromHome = false,
+  });
 
   Future<void> _addToStock(BuildContext context) async {
     final bool? confirmed = await showDialog<bool>(
@@ -203,7 +209,7 @@ class ChallengeDetailScreen extends StatelessWidget {
               ),
             ),
             const Spacer(),
-            if (!isFromStock)
+            if (!isFromStock && !isFromHome)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12.0),
                 child: ElevatedButton(
@@ -215,10 +221,11 @@ class ChallengeDetailScreen extends StatelessWidget {
                   child: const Text('あとでやる'),
                 ),
               ),
-            ElevatedButton(
-              onPressed: () => _setAsDailyTask(context),
-              child: const Text('今日やる'),
-            ),
+            if (!isFromHome)
+              ElevatedButton(
+                onPressed: () => _setAsDailyTask(context),
+                child: const Text('今日やる'),
+              ),
           ],
         ),
       ),
