@@ -39,7 +39,7 @@ class ChallengeDetailScreen extends StatelessWidget {
     final url = Uri.parse('http://localhost:8000/stock');
     final headers = {'Content-Type': 'application/json'};
     final body = json.encode({
-      'challenge_id': int.parse(task.id),
+      'task_id': int.parse(task.id),
     });
 
     try {
