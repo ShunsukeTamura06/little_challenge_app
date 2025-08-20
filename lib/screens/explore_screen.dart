@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:little_challenge_app/screens/search_results_screen.dart';
 
 class Category {
   final int id;
@@ -12,8 +13,6 @@ class Category {
     return Category(id: json['id'], name: json['name']);
   }
 }
-
-import 'package:little_challenge_app/screens/search_results_screen.dart';
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});

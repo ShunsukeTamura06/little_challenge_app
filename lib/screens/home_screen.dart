@@ -5,8 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:provider/provider.dart';
+import '../providers/app_state_manager.dart';
 import 'achievement_report_screen.dart';
 import '../models/task.dart';
+
+import 'package:little_challenge_app/providers/app_state_manager.dart';
+import 'package:provider/provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -16,9 +21,8 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  bool _isLoading = true;
+  bool _isLoading = false;
   String? _errorMessage;
-  Task? _task;
   bool _showUndoPanel = false;
   Timer? _undoTimer;
 
@@ -26,7 +30,13 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     initializeDateFormatting('ja_JP', null);
-    _fetchDailyTask();
+    // Post-frame callback to access provider
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final appState = Provider.of<AppStateManager>(context, listen: false);
+      if (appState.dailyTask == null) {
+        _fetchDailyTask();
+      }
+    });
   }
 
   @override
@@ -36,6 +46,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _fetchDailyTask({bool forceRefresh = false}) async {
+    final appState = Provider.of<AppStateManager>(context, listen: false);
+    if (forceRefresh) {
+      appState.clearDailyTask();
+    }
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -47,26 +62,28 @@ class _HomeScreenState extends State<HomeScreen> {
       final response = await http.get(url).timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final data = json.decode(utf8.decode(response.bodyBytes));
-        setState(() {
-          _task = Task.fromJson(data);
-          _isLoading = false;
-        });
+        appState.setDailyTask(Task.fromJson(data));
       } else {
         setState(() {
           _errorMessage = "タスクの取得に失敗しました (Code: ${response.statusCode})";
-          _isLoading = false;
         });
       }
     } catch (e) {
       setState(() {
         _errorMessage = "エラーが発生しました: $e";
-        _isLoading = false;
       });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
   void _onAchieveTapped() {
-    if (_task == null) return;
+    final task = Provider.of<AppStateManager>(context, listen: false).dailyTask;
+    if (task == null) return;
 
     setState(() {
       _showUndoPanel = true;
@@ -80,6 +97,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _triggerAchievementFlow() {
     if (!_showUndoPanel || !mounted) return;
+    final task = Provider.of<AppStateManager>(context, listen: false).dailyTask;
 
     setState(() {
       _showUndoPanel = false;
@@ -87,7 +105,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => AchievementReportScreen(taskId: _task!.id),
+        builder: (context) => AchievementReportScreen(taskId: task!.id),
         fullscreenDialog: true,
       ),
     ).then((_) {
@@ -103,11 +121,12 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _onStockItTapped() async {
-    if (_task == null) return;
+    final task = Provider.of<AppStateManager>(context, listen: false).dailyTask;
+    if (task == null) return;
 
     final url = Uri.parse('http://localhost:8000/stock');
     final headers = {'Content-Type': 'application/json'};
-    final body = json.encode({'task_id': int.parse(_task!.id)});
+    final body = json.encode({'task_id': int.parse(task.id)});
 
     try {
       final response = await http.post(url, headers: headers, body: body);
@@ -163,9 +182,12 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildMainContent(BuildContext context) {
+    final appState = Provider.of<AppStateManager>(context);
+    final task = appState.dailyTask;
+
     return Stack(
       children: [
-        if (_isLoading)
+        if (_isLoading && task == null)
           const Center(child: CircularProgressIndicator())
         else if (_errorMessage != null)
           Center(
@@ -181,7 +203,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           )
-        else if (_task == null)
+        else if (task == null)
           Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -196,7 +218,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           )
         else
-          _buildTaskView(context, _task!),
+          _buildTaskView(context, task),
         
         // Undo Panel
         if (_showUndoPanel)
@@ -249,7 +271,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         runSpacing: 4.0,
                         alignment: WrapAlignment.center,
                         children: task.tags
-                            .map((tag) => Chip(label: Text(tag, style: textTheme.bodyMedium))))
+                            .map((tag) => Chip(label: Text(tag, style: textTheme.bodyMedium)))
                             .toList(),
                       ),
                       const SizedBox(height: 24),

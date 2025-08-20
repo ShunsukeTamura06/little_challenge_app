@@ -43,7 +43,7 @@ class ChallengeDetailScreen extends StatelessWidget {
     });
 
     try {
-      final response = await http.post(Uri.parse(url), headers: headers, body: body);
+      final response = await http.post(url, headers: headers, body: body);
 
       if (!context.mounted) return;
 
