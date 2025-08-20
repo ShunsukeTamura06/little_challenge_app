@@ -27,6 +27,8 @@ class _StockScreenState extends State<StockScreen> {
   }
 
   Future<void> _fetchStockedTasks() async {
+    if (!mounted) return;
+    
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -36,6 +38,8 @@ class _StockScreenState extends State<StockScreen> {
 
     try {
       final response = await http.get(url).timeout(const Duration(seconds: 10));
+      if (!mounted) return;
+      
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(utf8.decode(response.bodyBytes));
         setState(() {
@@ -49,6 +53,7 @@ class _StockScreenState extends State<StockScreen> {
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = "エラーが発生しました: $e";
         _isLoading = false;
@@ -136,12 +141,14 @@ class _StockScreenState extends State<StockScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('エラーが発生しました: $e'),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('エラーが発生しました: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
     }
   }
 
@@ -157,35 +164,41 @@ class _StockScreenState extends State<StockScreen> {
         setState(() {
           _stockedTasks.removeWhere((task) => task.id == taskId);
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('タスクを削除しました'),
-            action: SnackBarAction(
-              label: '元に戻す',
-              onPressed: () {
-                // For simplicity, just refetch the list.
-                // A more sophisticated implementation would re-insert the task locally.
-                _fetchStockedTasks();
-              },
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('タスクを削除しました'),
+              action: SnackBarAction(
+                label: '元に戻す',
+                onPressed: () {
+                  // For simplicity, just refetch the list.
+                  // A more sophisticated implementation would re-insert the task locally.
+                  _fetchStockedTasks();
+                },
+              ),
             ),
-          ),
-        );
+          );
+        }
       } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('削除に失敗しました (Code: ${response.statusCode})'),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (!mounted) return;
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('削除に失敗しました (Code: ${response.statusCode})'),
+            content: Text('エラーが発生しました: $e'),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('エラーが発生しました: $e'),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
     }
   }
 
