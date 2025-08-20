@@ -283,6 +283,9 @@ class MyTask(Base):
 class MyTaskCreate(BaseModel):
     title: str
 
+class MyTaskUpdate(BaseModel):
+    title: str
+
 class MyTaskResponse(BaseModel):
     id: int
     user_id: str
@@ -303,6 +306,17 @@ def create_my_task(task: MyTaskCreate, db: Session = Depends(get_db)):
     user_id = "user_123"  # Fixed user_id for now
     db_task = MyTask(user_id=user_id, title=task.title)
     db.add(db_task)
+    db.commit()
+    db.refresh(db_task)
+    return db_task
+
+@app.put("/my_tasks/{task_id}", response_model=MyTaskResponse)
+def update_my_task(task_id: int, task: MyTaskUpdate, db: Session = Depends(get_db)):
+    user_id = "user_123"
+    db_task = db.query(MyTask).filter(MyTask.id == task_id, MyTask.user_id == user_id).first()
+    if db_task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    db_task.title = task.title
     db.commit()
     db.refresh(db_task)
     return db_task

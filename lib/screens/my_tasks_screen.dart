@@ -3,21 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 
-class MyTask {
-  final int id;
-  final String title;
-  final DateTime createdAt;
-
-  MyTask({required this.id, required this.title, required this.createdAt});
-
-  factory MyTask.fromJson(Map<String, dynamic> json) {
-    return MyTask(
-      id: json['id'],
-      title: json['title'],
-      createdAt: DateTime.parse(json['created_at'] as String),
-    );
-  }
-}
+import 'package:little_challenge_app/models/my_task.dart';
+import 'package:little_challenge_app/screens/my_task_editor_screen.dart';
 
 class MyTasksScreen extends StatefulWidget {
   const MyTasksScreen({super.key});
@@ -87,58 +74,16 @@ class _MyTasksScreenState extends State<MyTasksScreen> {
     }
   }
 
-  void _showAddTaskDialog() {
-    // TODO: Implement a proper editor screen [SCR-009]
-    final controller = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('新しいマイタスク'),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            decoration: const InputDecoration(hintText: 'タスク名'),
-          ),
-          actions: [
-            TextButton(
-              child: const Text('キャンセル'),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-            TextButton(
-              child: const Text('追加'),
-              onPressed: () {
-                if (controller.text.isNotEmpty) {
-                  _addMyTask(controller.text);
-                  Navigator.of(context).pop();
-                }
-              },
-            ),
-          ],
-        );
-      },
+  Future<void> _navigateToEditor({MyTask? task}) async {
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (context) => MyTaskEditorScreen(task: task),
+        fullscreenDialog: true,
+      ),
     );
-  }
 
-  Future<void> _addMyTask(String title) async {
-    const url = 'http://localhost:8000/my_tasks';
-    final headers = {'Content-Type': 'application/json'};
-    final body = json.encode({'title': title});
-
-    try {
-      final response = await http.post(Uri.parse(url), headers: headers, body: body);
-      if (response.statusCode == 201) {
-        // Refresh the list to show the new task
-        _fetchMyTasks();
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('タスクの追加に失敗しました (Code: ${response.statusCode})')),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('エラーが発生しました: $e')),
-      );
+    if (result == true) {
+      _fetchMyTasks(); // Refresh the list if a task was saved
     }
   }
 
@@ -150,7 +95,7 @@ class _MyTasksScreenState extends State<MyTasksScreen> {
       ),
       body: _buildMainContent(),
       floatingActionButton: FloatingActionButton(
-        onPressed: _showAddTaskDialog,
+        onPressed: () => _navigateToEditor(),
         child: const Icon(Icons.add),
         backgroundColor: Theme.of(context).primaryColor,
       ),
@@ -208,7 +153,10 @@ class _MyTasksScreenState extends State<MyTasksScreen> {
             child: ListTile(
               title: Text(task.title),
               subtitle: Text('作成日: ${DateFormat('yyyy/MM/dd').format(task.createdAt)}'),
-              // TODO: Add an edit button
+              trailing: IconButton(
+                icon: const Icon(Icons.edit),
+                onPressed: () => _navigateToEditor(task: task),
+              ),
             ),
           );
         },
