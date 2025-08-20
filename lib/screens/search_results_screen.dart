@@ -1,7 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import '../models/task.dart'; // Assuming Task model is used for search results
+import '../models/task.dart';
+import 'challenge_detail_screen.dart';
 
 class SearchResultsScreen extends StatefulWidget {
   final String? searchQuery;
@@ -101,7 +102,14 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
         return ListTile(
           title: Text(task.title),
           subtitle: Text(task.tags.join(', ')),
-          // TODO: Navigate to TaskDetailScreen [SCR-007]
+          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => ChallengeDetailScreen(task: task),
+              ),
+            );
+          },
         );
       },
     );

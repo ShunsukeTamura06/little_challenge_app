@@ -11,6 +11,69 @@ class ChallengeDetailScreen extends StatelessWidget {
 
   const ChallengeDetailScreen({super.key, required this.task, this.isFromStock = false});
 
+  Future<void> _addToStock(BuildContext context) async {
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('ストックに追加'),
+          content: Text('「${task.title}」をストックに追加しますか？'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('キャンセル'),
+              onPressed: () => Navigator.of(context).pop(false),
+            ),
+            TextButton(
+              child: const Text('はい'),
+              onPressed: () => Navigator.of(context).pop(true),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+
+    final url = Uri.parse('http://localhost:8000/stock');
+    final headers = {'Content-Type': 'application/json'};
+    final body = json.encode({
+      'challenge_id': int.parse(task.id),
+    });
+
+    try {
+      final response = await http.post(url, headers: headers, body: body);
+
+      if (!context.mounted) return;
+
+      if (response.statusCode == 201) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('ストックに追加しました！'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('ストックへの追加に失敗しました (Code: ${response.statusCode})'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('エラーが発生しました: $e'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    }
+  }
+
   Future<void> _setAsDailyTask(BuildContext context) async {
     final bool? confirmed = await showDialog<bool>(
       context: context,
@@ -140,6 +203,18 @@ class ChallengeDetailScreen extends StatelessWidget {
               ),
             ),
             const Spacer(),
+            if (!isFromStock)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12.0),
+                child: ElevatedButton(
+                  onPressed: () => _addToStock(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('あとでやる'),
+                ),
+              ),
             ElevatedButton(
               onPressed: () => _setAsDailyTask(context),
               child: const Text('今日やる'),
