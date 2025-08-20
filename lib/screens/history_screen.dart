@@ -29,7 +29,7 @@ class LogEntry {
       challenge: Task.fromJson(json['challenge']),
       memo: json['memo'],
       feeling: json['feeling'],
-      createdAt: DateTime.parse(json['created_at'] as String),
+      createdAt: DateTime.parse(json['achieved_at'] as String),
     );
   }
 }
@@ -137,48 +137,104 @@ class _HistoryScreenState extends State<HistoryScreen> {
       appBar: AppBar(
         title: const Text('ログ'),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _errorMessage != null
-              ? Center(child: Text(_errorMessage!))
-              : Column(
-                  children: [
-                    _buildSummaryPanel(),
-                    TableCalendar<LogEntry>(
-                      firstDay: DateTime.utc(2020, 1, 1),
-                      lastDay: DateTime.utc(2030, 12, 31),
-                      focusedDay: _focusedDay,
-                      selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-                      onDaySelected: _onDaySelected,
-                      onPageChanged: _onPageChanged,
-                      eventLoader: _getEventsForDay,
-                      calendarStyle: const CalendarStyle(
-                        markerDecoration: BoxDecoration(
-                          color: Colors.teal,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      headerStyle: const HeaderStyle(
-                        formatButtonVisible: false,
-                        titleCentered: true,
+      body: _errorMessage != null
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(_errorMessage!, textAlign: TextAlign.center),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => _fetchLogsForMonth(_focusedDay),
+                    child: const Text('再試行'),
+                  ),
+                ],
+              ),
+            )
+          : RefreshIndicator(
+              onRefresh: () => _fetchLogsForMonth(_focusedDay),
+              child: Column(
+                children: [
+                  _buildSummaryPanel(),
+                  if (_isLoading && _logsByDate.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: CircularProgressIndicator(),
+                    ),
+                  TableCalendar<LogEntry>(
+                    firstDay: DateTime.utc(2020, 1, 1),
+                    lastDay: DateTime.utc(2030, 12, 31),
+                    focusedDay: _focusedDay,
+                    selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+                    onDaySelected: _onDaySelected,
+                    onPageChanged: _onPageChanged,
+                    eventLoader: _getEventsForDay,
+                    calendarStyle: const CalendarStyle(
+                      markerDecoration: BoxDecoration(
+                        color: Colors.teal,
+                        shape: BoxShape.circle,
                       ),
                     ),
-                    const SizedBox(height: 8.0),
-                    Expanded(
-                      child: ValueListenableBuilder<List<LogEntry>>(
-                        valueListenable: _selectedEvents,
-                        builder: (context, value, _) {
-                          if (value.isEmpty) {
-                            return const Center(child: Text('この日の記録はありません。'));
-                          }
-                          return ListView.builder(
-                            itemCount: value.length,
-                            itemBuilder: (context, index) {
-                              final log = value[index];
-                              return ListTile(
-                                leading: Text(log.feeling ?? '📝', style: const TextStyle(fontSize: 24)),
+                    headerStyle: const HeaderStyle(
+                      formatButtonVisible: false,
+                      titleCentered: true,
+                    ),
+                  ),
+                  const SizedBox(height: 8.0),
+                  Expanded(
+                    child: ValueListenableBuilder<List<LogEntry>>(
+                      valueListenable: _selectedEvents,
+                      builder: (context, value, _) {
+                        if (value.isEmpty) {
+                          return const Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.event_note, size: 64, color: Colors.grey),
+                                SizedBox(height: 16),
+                                Text(
+                                  'この日の記録はありません',
+                                  style: TextStyle(color: Colors.grey, fontSize: 16),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                        return ListView.builder(
+                          itemCount: value.length,
+                          itemBuilder: (context, index) {
+                            final log = value[index];
+                            return Card(
+                              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                              child: ListTile(
+                                leading: Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: Colors.teal.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      log.feeling ?? '📝',
+                                      style: const TextStyle(fontSize: 20),
+                                    ),
+                                  ),
+                                ),
                                 title: Text(log.challenge.title),
-                                subtitle: log.memo != null && log.memo!.isNotEmpty ? Text(log.memo!) : null,
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    if (log.memo != null && log.memo!.isNotEmpty)
+                                      Text(log.memo!, maxLines: 2, overflow: TextOverflow.ellipsis),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      DateFormat('HH:mm').format(log.createdAt.toLocal()),
+                                      style: Theme.of(context).textTheme.bodySmall,
+                                    ),
+                                  ],
+                                ),
+                                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                                 onTap: () {
                                   Navigator.of(context).push(
                                     MaterialPageRoute(
@@ -186,21 +242,44 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                     ),
                                   );
                                 },
-                              );
-                            },
-                          );
-                        },
-                      ),
+                              ),
+                            );
+                          },
+                        );
+                      },
                     ),
-                  ],
-                ),
+                  ),
+                ],
+              ),
+            ),
     );
+  }
+
+  int _calculateStreak() {
+    if (_logsByDate.isEmpty) return 0;
+
+    final today = DateTime.now();
+    final todayUtc = DateTime.utc(today.year, today.month, today.day);
+    
+    int streak = 0;
+    DateTime checkDate = todayUtc;
+
+    // Count backwards from today until we find a day without achievements
+    while (true) {
+      if (_logsByDate.containsKey(checkDate) && _logsByDate[checkDate]!.isNotEmpty) {
+        streak++;
+        checkDate = checkDate.subtract(const Duration(days: 1));
+      } else {
+        break;
+      }
+    }
+
+    return streak;
   }
 
   Widget _buildSummaryPanel() {
     final totalAchievements = _logsByDate.values.expand((i) => i).length;
-    // TODO: Calculate streak
-    const streak = 0; 
+    final streak = _calculateStreak(); 
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
