@@ -153,6 +153,16 @@ class _StockScreenState extends State<StockScreen> {
   }
 
   Future<void> _deleteStockedTask(String taskId) async {
+    final int taskIndex = _stockedTasks.indexWhere((task) => task.id == taskId);
+    if (taskIndex == -1) return;
+
+    final Task taskToDelete = _stockedTasks[taskIndex];
+
+    // Optimistically remove from UI
+    setState(() {
+      _stockedTasks.removeAt(taskIndex);
+    });
+
     final url = Uri.parse('http://localhost:8000/stock/by-challenge/$taskId');
 
     try {
@@ -161,25 +171,22 @@ class _StockScreenState extends State<StockScreen> {
       if (!mounted) return;
 
       if (response.statusCode == 204) {
-        setState(() {
-          _stockedTasks.removeWhere((task) => task.id == taskId);
-        });
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('タスクを削除しました'),
-              action: SnackBarAction(
-                label: '元に戻す',
-                onPressed: () {
-                  // For simplicity, just refetch the list.
-                  // A more sophisticated implementation would re-insert the task locally.
-                  _fetchStockedTasks();
-                },
-              ),
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('タスクを削除しました'),
+            action: SnackBarAction(
+              label: '元に戻す',
+              onPressed: () {
+                _undoDelete(taskToDelete, taskIndex);
+              },
             ),
-          );
-        }
+          ),
+        );
       } else {
+        // If deletion fails, add the task back to the list and show error
+        setState(() {
+          _stockedTasks.insert(taskIndex, taskToDelete);
+        });
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -190,7 +197,10 @@ class _StockScreenState extends State<StockScreen> {
         }
       }
     } catch (e) {
-      if (!mounted) return;
+      // If an error occurs, add the task back and show error
+      setState(() {
+        _stockedTasks.insert(taskIndex, taskToDelete);
+      });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -199,6 +209,48 @@ class _StockScreenState extends State<StockScreen> {
           ),
         );
       }
+    }
+  }
+
+  Future<void> _undoDelete(Task task, int index) async {
+    // Re-add to the backend
+    final url = Uri.parse('http://localhost:8000/stock');
+    final headers = {'Content-Type': 'application/json'};
+    final body = json.encode({'task_id': task.id});
+
+    try {
+      final response = await http.post(url, headers: headers, body: body);
+
+      if (!mounted) return;
+
+      if (response.statusCode == 201) {
+        // Add back to the local list at the original position
+        setState(() {
+          _stockedTasks.insert(index, task);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('タスクを元に戻しました'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        // If re-adding fails, show an error. The user might need to refresh.
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('元に戻せませんでした (Code: ${response.statusCode})'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('エラーが発生しました: $e'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
     }
   }
 
