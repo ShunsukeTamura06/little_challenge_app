@@ -1,3 +1,4 @@
+"""Seed script to load tasks into DB."""
 import psycopg2
 import os
 

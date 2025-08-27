@@ -89,7 +89,7 @@ class _StockScreenState extends State<StockScreen> {
     final url = Uri.parse('http://localhost:8000/tasks/daily/replace');
     final headers = {'Content-Type': 'application/json'};
     final body = json.encode({
-      'new_task_id': int.parse(taskId),
+      'new_task_id': taskId,
       'source': 'stock',
     });
 
@@ -111,7 +111,7 @@ class _StockScreenState extends State<StockScreen> {
         
         // Delete the task from stock in the backend (silently)
         try {
-          final deleteUrl = Uri.parse('http://localhost:8000/stock/$taskId');
+          final deleteUrl = Uri.parse('http://localhost:8000/stock/by-challenge/$taskId');
           await http.delete(deleteUrl);
         } catch (e) {
           // Ignore deletion errors since the main action (setting daily task) succeeded
@@ -153,7 +153,7 @@ class _StockScreenState extends State<StockScreen> {
   }
 
   Future<void> _deleteStockedTask(String taskId) async {
-    final url = Uri.parse('http://localhost:8000/stock/$taskId');
+    final url = Uri.parse('http://localhost:8000/stock/by-challenge/$taskId');
 
     try {
       final response = await http.delete(url);

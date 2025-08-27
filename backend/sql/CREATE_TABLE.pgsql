@@ -50,3 +50,4 @@ CREATE TABLE stocks (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(), -- ストック作成日時
     UNIQUE (user_id, challenge_id) -- 同じチャレンジを重複してストックしないようにする
 );
+

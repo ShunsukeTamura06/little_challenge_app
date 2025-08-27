@@ -104,7 +104,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final url = Uri.parse('http://localhost:8000/stock');
     final headers = {'Content-Type': 'application/json'};
-    final body = json.encode({'task_id': int.parse(task.id)});
+    final body = json.encode({'task_id': task.id});
 
     try {
       final response = await http.post(url, headers: headers, body: body);

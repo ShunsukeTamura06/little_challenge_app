@@ -39,3 +39,4 @@ CREATE TABLE achievements (
     rating SMALLINT CHECK (rating BETWEEN 1 AND 5),
     achieved_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+

@@ -45,7 +45,7 @@ class ChallengeDetailScreen extends StatelessWidget {
     final url = Uri.parse('http://localhost:8000/stock');
     final headers = {'Content-Type': 'application/json'};
     final body = json.encode({
-      'task_id': int.parse(task.id),
+      'task_id': task.id,
     });
 
     try {
@@ -108,7 +108,7 @@ class ChallengeDetailScreen extends StatelessWidget {
     final url = Uri.parse('http://localhost:8000/tasks/daily/replace');
     final headers = {'Content-Type': 'application/json'};
     final body = json.encode({
-      'new_task_id': int.parse(task.id),
+      'new_task_id': task.id,
       'source': 'detail', // or another identifier
     });
 
@@ -126,7 +126,7 @@ class ChallengeDetailScreen extends StatelessWidget {
         // If this task was from stock, remove it from stock
         if (isFromStock) {
           try {
-            final deleteUrl = Uri.parse('http://localhost:8000/stock/${task.id}');
+            final deleteUrl = Uri.parse('http://localhost:8000/stock/by-challenge/${task.id}');
             await http.delete(deleteUrl);
           } catch (e) {
             // Ignore deletion errors since the main action (setting daily task) succeeded

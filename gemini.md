@@ -239,6 +239,12 @@ graph TD
     - **リクエストボディ:** `{"new_task_id": "task-456", "source": "stock"}`
     - **成功レスポンス (200 OK):** 上記`GET /tasks/daily`と同様のタスクオブジェクト。
 
+### `/challenges`
+- **`GET /challenges/search`**
+    - **説明:** キーワードまたはカテゴリIDに基づいてタスクを検索する。
+    - **クエリパラメータ:** `q` (string, optional), `category_id` (integer, optional)
+    - **成功レスポンス (200 OK):** `[{"id": "task-123", "title": "...", "tags": ["..."], "is_completed": false}, ...]`
+
 ### `/logs`
 - **`POST /logs`**
     - **説明:** タスクの達成を記録する。
@@ -257,6 +263,6 @@ graph TD
     - **説明:** タスクをストックに追加する。
     - **リクエストボディ:** `{"task_id": "task-789"}`
     - **成功レスポンス (201 Created):** `{"stock_id": "stock-xyz", ...}`
-- **`DELETE /stock/{id}`**
-    - **説明:** ストックからタスクを削除する。
+- **`DELETE /stock/by-challenge/{challenge_id}`**
+    - **説明:** チャレンジIDを指定して、ストックからタスクを削除する。
     - **成功レスポンス (204 No Content):**
