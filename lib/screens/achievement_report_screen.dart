@@ -73,10 +73,13 @@ class _AchievementReportScreenState extends State<AchievementReportScreen> {
 
     final url = Uri.parse('${Environment.apiBaseUrl}/logs');
     final headers = {'Content-Type': 'application/json'};
+    final nowLocal = DateTime.now();
     final body = json.encode({
       'task_id': int.parse(widget.taskId),
       'memo': _memoController.text,
       'feeling': feeling,
+      // Save using client-local timestamp
+      'achieved_at': nowLocal.toIso8601String(),
     });
 
     try {

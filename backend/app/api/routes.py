@@ -154,6 +154,8 @@ def create_log(log: LogCreate, db: Session = Depends(get_db)):
         challenge_id=log.task_id,
         memo=log.memo,
         feeling=log.feeling,
+        # Save in client-local time when provided; otherwise use DB default
+        achieved_at=log.achieved_at if log.achieved_at is not None else None,
     )
     db.add(db_log)
     db.commit()
