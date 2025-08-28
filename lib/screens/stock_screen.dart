@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../models/task.dart';
 import '../providers/app_state_manager.dart';
 import 'challenge_detail_screen.dart';
+import 'package:little_challenge_app/config/environment.dart';
 
 class StockScreen extends StatefulWidget {
   const StockScreen({super.key});
@@ -34,7 +35,7 @@ class _StockScreenState extends State<StockScreen> {
       _errorMessage = null;
     });
 
-    final url = Uri.parse('http://localhost:8000/stock');
+    final url = Uri.parse('${Environment.apiBaseUrl}/stock');
 
     try {
       final response = await http.get(url).timeout(const Duration(seconds: 10));
@@ -86,7 +87,7 @@ class _StockScreenState extends State<StockScreen> {
       return;
     }
 
-    final url = Uri.parse('http://localhost:8000/tasks/daily/replace');
+    final url = Uri.parse('${Environment.apiBaseUrl}/tasks/daily/replace');
     final headers = {'Content-Type': 'application/json'};
     final body = json.encode({
       'new_task_id': taskId,
@@ -111,7 +112,7 @@ class _StockScreenState extends State<StockScreen> {
         
         // Delete the task from stock in the backend (silently)
         try {
-          final deleteUrl = Uri.parse('http://localhost:8000/stock/by-challenge/$taskId');
+          final deleteUrl = Uri.parse('${Environment.apiBaseUrl}/stock/by-challenge/$taskId');
           await http.delete(deleteUrl);
         } catch (e) {
           // Ignore deletion errors since the main action (setting daily task) succeeded
@@ -163,7 +164,7 @@ class _StockScreenState extends State<StockScreen> {
       _stockedTasks.removeAt(taskIndex);
     });
 
-    final url = Uri.parse('http://localhost:8000/stock/by-challenge/$taskId');
+    final url = Uri.parse('${Environment.apiBaseUrl}/stock/by-challenge/$taskId');
 
     try {
       final response = await http.delete(url);
@@ -214,7 +215,7 @@ class _StockScreenState extends State<StockScreen> {
 
   Future<void> _undoDelete(Task task, int index) async {
     // Re-add to the backend
-    final url = Uri.parse('http://localhost:8000/stock');
+    final url = Uri.parse('${Environment.apiBaseUrl}/stock');
     final headers = {'Content-Type': 'application/json'};
     final body = json.encode({'task_id': task.id});
 

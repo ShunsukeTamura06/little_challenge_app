@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state_manager.dart';
+import 'package:little_challenge_app/config/environment.dart';
 import 'achievement_report_screen.dart';
 import 'challenge_detail_screen.dart';
 import '../models/task.dart';
@@ -51,7 +52,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _errorMessage = null;
     });
 
-    final url = Uri.parse('http://localhost:8000/tasks/daily?force_refresh=$forceRefresh');
+    final url = Uri.parse('${Environment.apiBaseUrl}/tasks/daily?force_refresh=$forceRefresh');
 
     try {
       final response = await http.get(url).timeout(const Duration(seconds: 10));
@@ -102,7 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final task = appState.dailyTask;
     if (task == null || _isStocking) return;
 
-    final url = Uri.parse('http://localhost:8000/stock');
+    final url = Uri.parse('${Environment.apiBaseUrl}/stock');
     final headers = {'Content-Type': 'application/json'};
     final body = json.encode({'task_id': task.id});
 

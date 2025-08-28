@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../models/my_task.dart'; // Assuming MyTask model is in a separate file
+import 'package:little_challenge_app/config/environment.dart';
 
 class MyTaskEditorScreen extends StatefulWidget {
   final MyTask? task;
@@ -40,8 +41,8 @@ class _MyTaskEditorScreenState extends State<MyTaskEditorScreen> {
 
     final isUpdating = widget.task != null;
     final url = isUpdating
-        ? 'http://localhost:8000/my_tasks/${widget.task!.id}'
-        : 'http://localhost:8000/my_tasks';
+        ? '${Environment.apiBaseUrl}/my_tasks/${widget.task!.id}'
+        : '${Environment.apiBaseUrl}/my_tasks';
     
     final headers = {'Content-Type': 'application/json'};
     final body = json.encode({'title': _titleController.text});

@@ -609,27 +609,42 @@ tasks = [
 ]
 
 # --- 2. データベース接続情報 ---
-# docker-compose.ymlの内容と一致させてください。
-DB_NAME = "mydatabase"
-DB_USER = "myuser"
-DB_PASS = "mypassword"
-DB_HOST = "db"  # "localhost" から "db" に変更！
-DB_PORT = "5432" # コンテナ間の通信なので、公開ポート(5433)ではなく、元のポート(5432)を指定
+# Render などのホスティングでは DATABASE_URL を優先して利用します。
+DB_URL = os.getenv("DATABASE_URL")
+DB_NAME = os.getenv("DB_NAME", "mydatabase")
+DB_USER = os.getenv("DB_USER", "myuser")
+DB_PASS = os.getenv("DB_PASS", "mypassword")
+DB_HOST = os.getenv("DB_HOST", "db")  # docker-compose ではサービス名 "db"
+DB_PORT = os.getenv("DB_PORT", "5432")
 
 # --- 3. データを投入するスクリプト本体 ---
 def load_data():
     conn = None
     try:
-        # データベースに接続
-        conn = psycopg2.connect(
-            dbname=DB_NAME,
-            user=DB_USER,
-            password=DB_PASS,
-            host=DB_HOST,
-            port=DB_PORT
-        )
+        # データベースに接続（DATABASE_URL があれば優先）
+        if DB_URL:
+            conn = psycopg2.connect(DB_URL)
+        else:
+            conn = psycopg2.connect(
+                dbname=DB_NAME,
+                user=DB_USER,
+                password=DB_PASS,
+                host=DB_HOST,
+                port=DB_PORT,
+            )
         cur = conn.cursor()
         print("データベース接続成功。")
+
+        # 既にデータが存在する場合はスキップ
+        try:
+            cur.execute("SELECT COUNT(*) FROM challenges")
+            existing = cur.fetchone()[0]
+            if existing and existing > 0:
+                print(f"既に {existing} 件のchallengesが存在するため、シードをスキップします。")
+                return
+        except Exception:
+            # テーブル未作成時でも後続で作成される想定のため、そのまま続行
+            pass
 
         # まず、カテゴリを挿入し、IDを記録する
         category_ids = {}

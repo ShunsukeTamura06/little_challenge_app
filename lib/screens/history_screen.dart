@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../models/task.dart';
+import 'package:little_challenge_app/config/environment.dart';
 
 // A model for the log entry, adapted from the backend response
 import 'package:little_challenge_app/screens/challenge_detail_screen.dart';
@@ -78,7 +79,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
     final monthFormat = DateFormat('yyyy-MM');
     final formattedMonth = monthFormat.format(month);
-    final url = Uri.parse('http://localhost:8000/logs?month=$formattedMonth');
+    final url = Uri.parse('${Environment.apiBaseUrl}/logs?month=$formattedMonth');
 
     try {
       final response = await http.get(Uri.parse(url.toString()));

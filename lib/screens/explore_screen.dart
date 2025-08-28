@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:little_challenge_app/screens/search_results_screen.dart';
+import 'package:little_challenge_app/config/environment.dart';
 
 class Category {
   final int id;
@@ -45,7 +46,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       _errorMessage = null;
     });
 
-    const url = 'http://localhost:8000/categories';
+    final url = '${Environment.apiBaseUrl}/categories';
     try {
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {

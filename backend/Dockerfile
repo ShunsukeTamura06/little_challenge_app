@@ -18,4 +18,5 @@ RUN uv pip install --system --no-cache -r /app/requirements.txt
 COPY . /app
 
 # アプリを実行。「0.0.0.0」でコンテナ外部からアクセスできるようにする
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+EXPOSE 8000
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

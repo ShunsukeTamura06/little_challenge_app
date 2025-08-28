@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:little_challenge_app/config/environment.dart';
 
 class AchievementReportScreen extends StatefulWidget {
   final String taskId;
@@ -70,7 +71,7 @@ class _AchievementReportScreenState extends State<AchievementReportScreen> {
     if (_isSubmitting) return;
     setState(() => _isSubmitting = true);
 
-    final url = Uri.parse('http://localhost:8000/logs');
+    final url = Uri.parse('${Environment.apiBaseUrl}/logs');
     final headers = {'Content-Type': 'application/json'};
     final body = json.encode({
       'task_id': int.parse(widget.taskId),

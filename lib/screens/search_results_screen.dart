@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../models/task.dart';
 import 'challenge_detail_screen.dart';
+import 'package:little_challenge_app/config/environment.dart';
 
 class SearchResultsScreen extends StatefulWidget {
   final String? searchQuery;
@@ -31,7 +32,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
       _errorMessage = null;
     });
 
-    String url = 'http://localhost:8000/challenges/search';
+    String url = '${Environment.apiBaseUrl}/challenges/search';
     final Map<String, String> queryParams = {};
 
     if (widget.searchQuery != null && widget.searchQuery!.isNotEmpty) {

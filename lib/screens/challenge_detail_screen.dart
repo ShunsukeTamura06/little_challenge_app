@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import '../models/task.dart';
 import '../providers/app_state_manager.dart';
+import 'package:little_challenge_app/config/environment.dart';
 
 class ChallengeDetailScreen extends StatelessWidget {
   final Task task;
@@ -42,7 +43,7 @@ class ChallengeDetailScreen extends StatelessWidget {
       return;
     }
 
-    final url = Uri.parse('http://localhost:8000/stock');
+    final url = Uri.parse('${Environment.apiBaseUrl}/stock');
     final headers = {'Content-Type': 'application/json'};
     final body = json.encode({
       'task_id': task.id,
@@ -105,7 +106,7 @@ class ChallengeDetailScreen extends StatelessWidget {
       return;
     }
 
-    final url = Uri.parse('http://localhost:8000/tasks/daily/replace');
+    final url = Uri.parse('${Environment.apiBaseUrl}/tasks/daily/replace');
     final headers = {'Content-Type': 'application/json'};
     final body = json.encode({
       'new_task_id': task.id,
@@ -126,7 +127,7 @@ class ChallengeDetailScreen extends StatelessWidget {
         // If this task was from stock, remove it from stock
         if (isFromStock) {
           try {
-            final deleteUrl = Uri.parse('http://localhost:8000/stock/by-challenge/${task.id}');
+            final deleteUrl = Uri.parse('${Environment.apiBaseUrl}/stock/by-challenge/${task.id}');
             await http.delete(deleteUrl);
           } catch (e) {
             // Ignore deletion errors since the main action (setting daily task) succeeded

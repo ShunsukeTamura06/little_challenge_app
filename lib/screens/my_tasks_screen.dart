@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import 'package:little_challenge_app/models/my_task.dart';
 import 'package:little_challenge_app/screens/my_task_editor_screen.dart';
+import 'package:little_challenge_app/config/environment.dart';
 
 class MyTasksScreen extends StatefulWidget {
   const MyTasksScreen({super.key});
@@ -30,7 +31,7 @@ class _MyTasksScreenState extends State<MyTasksScreen> {
       _errorMessage = null;
     });
 
-    const url = 'http://localhost:8000/my_tasks';
+    final url = '${Environment.apiBaseUrl}/my_tasks';
     try {
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
@@ -54,7 +55,7 @@ class _MyTasksScreenState extends State<MyTasksScreen> {
   }
 
   Future<void> _deleteMyTask(int taskId) async {
-    final url = 'http://localhost:8000/my_tasks/$taskId';
+    final url = '${Environment.apiBaseUrl}/my_tasks/$taskId';
     try {
       final response = await http.delete(Uri.parse(url));
       if (response.statusCode == 204) {
