@@ -19,6 +19,10 @@ from ..schemas.task import TaskReplaceRequest
 
 router = APIRouter()
 
+@router.get("/healthz")
+def healthz():
+    return {"status": "ok"}
+
 
 # データ投入用エンドポイント（一時的）: scripts/load_data.py の100件データを利用
 @router.post("/admin/init-data")

@@ -635,13 +635,11 @@ def load_data():
         cur = conn.cursor()
         print("データベース接続成功。")
 
-        # 既にデータが存在する場合はスキップ
+        # 既存件数を出力（以降は不足分のみを追加）
         try:
             cur.execute("SELECT COUNT(*) FROM challenges")
             existing = cur.fetchone()[0]
-            if existing and existing > 0:
-                print(f"既に {existing} 件のchallengesが存在するため、シードをスキップします。")
-                return
+            print(f"現在の challenges 件数: {existing}")
         except Exception:
             # テーブル未作成時でも後続で作成される想定のため、そのまま続行
             pass
@@ -663,17 +661,29 @@ def load_data():
                     category_ids[category_name] = category_id
                     print(f"カテゴリ '{category_name}' をID: {category_id} で挿入しました。")
 
-        # 次に、挑戦（チャレンジ）を挿入する
+        # 次に、挑戦（チャレンジ）を挿入する（未登録のみ）
+        inserted, skipped = 0, 0
         for task in tasks:
             category_id = category_ids[task['category']]
+            # 既存チェック（カテゴリ + タイトルで判定）
+            cur.execute(
+                "SELECT id FROM challenges WHERE category_id = %s AND title = %s",
+                (category_id, task['title']),
+            )
+            found = cur.fetchone()
+            if found:
+                skipped += 1
+                continue
+
             cur.execute(
                 "INSERT INTO challenges (category_id, title, description, difficulty) VALUES (%s, %s, %s, %s)",
                 (category_id, task['title'], task['description'], task['difficulty'])
             )
+            inserted += 1
 
         # 変更をデータベースにコミット（保存）
         conn.commit()
-        print(f"\n成功: {len(tasks)}件の挑戦をデータベースに挿入しました。")
+        print(f"\n成功: {inserted}件を新規挿入、{skipped}件をスキップしました。")
 
     except psycopg2.Error as e:
         print(f"データベースエラー: {e}")
