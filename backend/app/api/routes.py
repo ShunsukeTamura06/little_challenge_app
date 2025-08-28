@@ -281,7 +281,7 @@ def get_stocked_tasks(db: Session = Depends(get_db)):
         ch = item.challenge
         results.append(
             {
-                "id": str(ch.id),
+                "id": ch.id,
                 "title": ch.title,
                 "tags": [ch.category.name],
                 "description": ch.description,
@@ -323,6 +323,8 @@ def search_challenges(
                 "id": ch.id,
                 "title": ch.title,
                 "tags": [ch.category.name],
+                "description": ch.description,
+                "difficulty": ch.difficulty,
                 "is_completed": ch.id in completed_challenge_ids,
             }
         )

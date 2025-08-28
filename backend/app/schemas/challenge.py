@@ -18,8 +18,9 @@ class ChallengeSummary(BaseModel):
     id: int
     title: str
     tags: List[str]
+    description: Optional[str] = None
+    difficulty: Optional[int] = None
     is_completed: Optional[bool] = None
 
     class Config:
         from_attributes = True
-
