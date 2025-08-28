@@ -20,121 +20,71 @@ from ..schemas.task import TaskReplaceRequest
 router = APIRouter()
 
 
-# データ投入用エンドポイント（一時的）
+# データ投入用エンドポイント（一時的）: scripts/load_data.py の100件データを利用
 @router.post("/admin/init-data")
 def initialize_data(db: Session = Depends(get_db)):
-    """データベースにテーブル作成と初期データを投入する（一時的なエンドポイント）"""
+    """テーブル作成と初期データ投入。scripts/load_data.py の100件データを使用し、未登録のみ追加。"""
     try:
         # テーブル作成
         from ..core.database import Base, engine
         Base.metadata.create_all(bind=engine)
-        
-        # 既にデータがある場合はスキップ
-        existing_categories = db.query(Category).count()
-        if existing_categories > 0:
-            return {"message": f"Data already exists. Categories: {existing_categories}"}
-        
-        # カテゴリデータを投入
-        categories_data = [
-            "食事", "運動", "学習", "創造", "交流", "整理", "癒やし"
-        ]
-        
-        category_objects = {}
-        for cat_name in categories_data:
-            cat = Category(name=cat_name)
-            db.add(cat)
-            db.flush()  # IDを取得するため
-            category_objects[cat_name] = cat
-        
-        # チャレンジデータの一部を投入（テスト用に10件）
-        challenges_data = [
-            {
-                "category": "食事",
-                "title": "利き手ではない方の手でお箸を使って食事する",
-                "description": "普段とは違う手でお箸を使うことで、脳の新しい部分が刺激され、いつもの食事が新鮮な体験に変わります。",
-                "difficulty": 2
-            },
-            {
-                "category": "食事",
-                "title": "コンビニで見たことのない商品を1つ選んで買う",
-                "description": "普段手に取らない新商品や地域限定品を直感で選んでみましょう。予想外の美味しさとの出会いが期待できます。",
-                "difficulty": 1
-            },
-            {
-                "category": "運動",
-                "title": "エスカレーターを使わずに階段を一つ多く使う",
-                "description": "普段エスカレーターを使う場所で階段を選んでみましょう。ほんの少しの運動でも、体が軽やかになります。",
-                "difficulty": 1
-            },
-            {
-                "category": "運動",
-                "title": "朝起きて5分間ストレッチをする",
-                "description": "起床後の5分間を体をほぐす時間にしてみませんか。筋肉の緊張がほぐれ、一日の始まりが気持ちよくスタートできます。",
-                "difficulty": 2
-            },
-            {
-                "category": "学習",
-                "title": "今日知らなかった新しい単語を1つ覚える",
-                "description": "辞書やインターネットで新しい言葉を一つ見つけて覚えてみませんか。語彙が増えることで、表現力も豊かになります。",
-                "difficulty": 2
-            },
-            {
-                "category": "創造",
-                "title": "スマホで撮った写真に映画のタイトルのような名前をつける",
-                "description": "何気なく撮った写真を見返して、まるで映画のワンシーンのようなタイトルを考えてみませんか。",
-                "difficulty": 2
-            },
-            {
-                "category": "交流",
-                "title": "家族に今日あった良いことを一つ話す",
-                "description": "些細なことでも構いません。今日の良い出来事を家族とシェアしてみましょう。",
-                "difficulty": 1
-            },
-            {
-                "category": "整理",
-                "title": "デスクの上を5分間で整理する",
-                "description": "散らかったデスクを短時間で整理してみませんか。すっきりした環境は集中力を高めます。",
-                "difficulty": 1
-            },
-            {
-                "category": "癒やし",
-                "title": "好きな香りのお茶を丁寧に淹れて味わう",
-                "description": "急須やティーポットで丁寧にお茶を淹れ、香りと味をゆっくりと楽しんでみませんか。",
-                "difficulty": 1
-            },
-            {
-                "category": "癒やし",
-                "title": "温かいお風呂にいつもより長く浸かる",
-                "description": "普段はシャワーで済ませがちでも、今日は湯船にゆっくり浸かってみませんか。",
-                "difficulty": 1
-            }
-        ]
-        
-        for challenge_data in challenges_data:
-            category = category_objects[challenge_data["category"]]
-            challenge = Challenge(
-                category_id=category.id,
-                title=challenge_data["title"],
-                description=challenge_data["description"],
-                difficulty=challenge_data["difficulty"]
+
+        # データセットを import（backend/scripts/load_data.py の tasks）
+        try:
+            from scripts.load_data import tasks  # type: ignore
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to import seed tasks: {e}")
+
+        # カテゴリの用意（存在しないもののみ作成）
+        category_map = {c.name: c for c in db.query(Category).all()}
+        for t in tasks:
+            name = t.get("category")
+            if name and name not in category_map:
+                cat = Category(name=name)
+                db.add(cat)
+                db.flush()
+                category_map[name] = cat
+
+        inserted, skipped = 0, 0
+        # チャレンジを未登録のみ追加（カテゴリ+タイトルで重複回避）
+        for t in tasks:
+            cat = category_map.get(t.get("category"))
+            if not cat:
+                continue
+            exists = (
+                db.query(Challenge)
+                .filter(Challenge.category_id == cat.id, Challenge.title == t.get("title"))
+                .first()
             )
-            db.add(challenge)
-        
+            if exists:
+                skipped += 1
+                continue
+            ch = Challenge(
+                category_id=cat.id,
+                title=t.get("title"),
+                description=t.get("description"),
+                difficulty=int(t.get("difficulty") or 1),
+            )
+            db.add(ch)
+            inserted += 1
+
         db.commit()
-        
-        # 投入されたデータをカウント
+
         total_categories = db.query(Category).count()
         total_challenges = db.query(Challenge).count()
-        
         return {
-            "message": "Data initialization completed successfully!",
-            "categories_created": total_categories,
-            "challenges_created": total_challenges
+            "message": "Initialization done",
+            "inserted": inserted,
+            "skipped": skipped,
+            "categories_total": total_categories,
+            "challenges_total": total_challenges,
         }
-        
+
+    except HTTPException:
+        raise
     except Exception as e:
         db.rollback()
-        return {"error": f"Failed to initialize data: {str(e)}"}
+        raise HTTPException(status_code=500, detail=f"Failed to initialize data: {e}")
 
 
 @router.get("/tasks/daily")
