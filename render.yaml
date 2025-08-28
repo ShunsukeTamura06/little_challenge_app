@@ -2,7 +2,6 @@ services:
   - type: web
     name: little-challenge-api
     env: docker
-    # Build from the backend/ directory
     dockerContext: ./backend
     dockerfilePath: Dockerfile
     autoDeploy: true
@@ -13,9 +12,6 @@ services:
         fromDatabase:
           name: little-challenge-db
           property: connectionString
-    # Run a one-off init to create tables and seed data after first deploy
-    postDeployCommand: |
-      python scripts/init_db.py && python scripts/load_data.py
 
 databases:
   - name: little-challenge-db
