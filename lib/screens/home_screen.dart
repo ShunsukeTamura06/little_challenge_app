@@ -7,6 +7,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state_manager.dart';
 import 'package:little_challenge_app/config/environment.dart';
+import 'package:little_challenge_app/services/api_headers.dart';
 import 'achievement_report_screen.dart';
 import 'challenge_detail_screen.dart';
 import '../models/task.dart';
@@ -104,7 +105,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (task == null || _isStocking) return;
 
     final url = Uri.parse('${Environment.apiBaseUrl}/stock');
-    final headers = {'Content-Type': 'application/json'};
+    final headers = await ApiHeaders.jsonHeaders();
     final body = json.encode({'task_id': task.id});
 
     try {

@@ -8,6 +8,7 @@ import '../models/task.dart';
 import '../providers/app_state_manager.dart';
 import 'challenge_detail_screen.dart';
 import 'package:little_challenge_app/config/environment.dart';
+import 'package:little_challenge_app/services/api_headers.dart';
 
 class StockScreen extends StatefulWidget {
   const StockScreen({super.key});
@@ -38,7 +39,9 @@ class _StockScreenState extends State<StockScreen> {
     final url = Uri.parse('${Environment.apiBaseUrl}/stock');
 
     try {
-      final response = await http.get(url).timeout(const Duration(seconds: 10));
+      final response = await http
+          .get(url, headers: await ApiHeaders.baseHeaders())
+          .timeout(const Duration(seconds: 10));
       if (!mounted) return;
       
       if (response.statusCode == 200) {
@@ -88,7 +91,7 @@ class _StockScreenState extends State<StockScreen> {
     }
 
     final url = Uri.parse('${Environment.apiBaseUrl}/tasks/daily/replace');
-    final headers = {'Content-Type': 'application/json'};
+    final headers = await ApiHeaders.jsonHeaders();
     final body = json.encode({
       'new_task_id': taskId,
       'source': 'stock',
@@ -113,7 +116,7 @@ class _StockScreenState extends State<StockScreen> {
         // Delete the task from stock in the backend (silently)
         try {
           final deleteUrl = Uri.parse('${Environment.apiBaseUrl}/stock/by-challenge/$taskId');
-          await http.delete(deleteUrl);
+          await http.delete(deleteUrl, headers: await ApiHeaders.baseHeaders());
         } catch (e) {
           // Ignore deletion errors since the main action (setting daily task) succeeded
           // In production, use a proper logging framework instead of print
@@ -167,7 +170,7 @@ class _StockScreenState extends State<StockScreen> {
     final url = Uri.parse('${Environment.apiBaseUrl}/stock/by-challenge/$taskId');
 
     try {
-      final response = await http.delete(url);
+      final response = await http.delete(url, headers: await ApiHeaders.baseHeaders());
 
       if (!mounted) return;
 
@@ -216,7 +219,7 @@ class _StockScreenState extends State<StockScreen> {
   Future<void> _undoDelete(Task task, int index) async {
     // Re-add to the backend
     final url = Uri.parse('${Environment.apiBaseUrl}/stock');
-    final headers = {'Content-Type': 'application/json'};
+    final headers = await ApiHeaders.jsonHeaders();
     final body = json.encode({'task_id': task.id});
 
     try {

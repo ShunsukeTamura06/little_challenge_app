@@ -3,21 +3,33 @@ from datetime import datetime
 import random
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Response, Header
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 
 from ..core.database import get_db
-from ..models import Category, Challenge, Achievement
+from ..models import Category, Challenge, Achievement, MyTask
 from ..models.stock import Stock
 from ..schemas.category import CategoryResponse
 from ..schemas.log import LogCreate, LogResponse
 from ..schemas.stock import StockCreate, StockResponse
 from ..schemas.challenge import ChallengeSummary
 from ..schemas.task import TaskReplaceRequest
+from ..schemas.my_task import MyTaskCreate, MyTaskUpdate, MyTaskResponse
 
 
 router = APIRouter()
+
+
+# Simple dependency to resolve current user id from header
+def get_current_user_id(x_user_id: str = Header(..., alias="X-User-Id")) -> str:
+    """
+    Resolve the current user from the `X-User-Id` header.
+    For production, replace with proper authentication (e.g., Sign in with Apple).
+    """
+    if not x_user_id or not x_user_id.strip():
+        raise HTTPException(status_code=400, detail="X-User-Id header is required")
+    return x_user_id.strip()
 
 @router.get("/healthz")
 def healthz():
@@ -142,8 +154,11 @@ def replace_daily_task(req: TaskReplaceRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/logs", response_model=LogResponse, status_code=201)
-def create_log(log: LogCreate, db: Session = Depends(get_db)):
-    user_id = "user_123"  # TODO: replace with real auth
+def create_log(
+    log: LogCreate,
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+):
 
     db_challenge = db.query(Challenge).filter(Challenge.id == log.task_id).first()
     if db_challenge is None:
@@ -165,8 +180,11 @@ def create_log(log: LogCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/stock", response_model=StockResponse, status_code=201)
-def create_stock(stock: StockCreate, db: Session = Depends(get_db)):
-    user_id = "user_123"  # TODO: replace with real auth
+def create_stock(
+    stock: StockCreate,
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+):
 
     try:
         task_id_int = int(stock.task_id)
@@ -199,8 +217,9 @@ def create_stock(stock: StockCreate, db: Session = Depends(get_db)):
 
 
 @router.delete("/stock/by-challenge/{challenge_id}", status_code=204)
-def delete_stock_by_challenge_id(challenge_id: int, db: Session = Depends(get_db)):
-    user_id = "user_123"  # TODO: replace with real auth
+def delete_stock_by_challenge_id(
+    challenge_id: int, db: Session = Depends(get_db), user_id: str = Depends(get_current_user_id)
+):
 
     stock_item = (
         db.query(Stock)
@@ -216,8 +235,11 @@ def delete_stock_by_challenge_id(challenge_id: int, db: Session = Depends(get_db
 
 
 @router.get("/logs")
-def get_logs(month: Optional[str] = None, db: Session = Depends(get_db)):
-    user_id = "user_123"
+def get_logs(
+    month: Optional[str] = None,
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+):
     query = (
         db.query(Achievement)
         .options(joinedload(Achievement.challenge).joinedload(Challenge.category))
@@ -265,8 +287,7 @@ def get_logs(month: Optional[str] = None, db: Session = Depends(get_db)):
 
 
 @router.get("/stock", response_model=List[ChallengeSummary])
-def get_stocked_tasks(db: Session = Depends(get_db)):
-    user_id = "user_123"  # TODO: replace with real auth
+def get_stocked_tasks(db: Session = Depends(get_db), user_id: str = Depends(get_current_user_id)):
 
     stocked_items = (
         db.query(Stock)
@@ -296,8 +317,8 @@ def search_challenges(
     q: Optional[str] = None,
     category_id: Optional[int] = None,
     db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
 ):
-    user_id = "user_123"  # TODO: replace with real auth
     query = db.query(Challenge).options(joinedload(Challenge.category))
 
     if q:
@@ -336,3 +357,71 @@ def search_challenges(
 def get_categories(db: Session = Depends(get_db)):
     categories = db.query(Category).order_by(Category.name).all()
     return categories
+
+
+# My Tasks (per user)
+@router.get("/my_tasks", response_model=List[MyTaskResponse])
+def list_my_tasks(
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+):
+    tasks = (
+        db.query(MyTask)
+        .filter(MyTask.user_id == user_id)
+        .order_by(MyTask.created_at.desc())
+        .all()
+    )
+    return tasks
+
+
+@router.post("/my_tasks", response_model=MyTaskResponse, status_code=201)
+def create_my_task(
+    payload: MyTaskCreate,
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+):
+    task = MyTask(user_id=user_id, title=payload.title)
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+    return task
+
+
+@router.put("/my_tasks/{task_id}", response_model=MyTaskResponse)
+def update_my_task(
+    task_id: int,
+    payload: MyTaskUpdate,
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+):
+    task = (
+        db.query(MyTask)
+        .filter(MyTask.id == task_id, MyTask.user_id == user_id)
+        .first()
+    )
+    if not task:
+        raise HTTPException(status_code=404, detail="MyTask not found")
+
+    if payload.title is not None:
+        task.title = payload.title
+
+    db.commit()
+    db.refresh(task)
+    return task
+
+
+@router.delete("/my_tasks/{task_id}", status_code=204)
+def delete_my_task(
+    task_id: int,
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+):
+    task = (
+        db.query(MyTask)
+        .filter(MyTask.id == task_id, MyTask.user_id == user_id)
+        .first()
+    )
+    if task:
+        db.delete(task)
+        db.commit()
+    return Response(status_code=204)

@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import '../models/task.dart';
 import 'challenge_detail_screen.dart';
 import 'package:little_challenge_app/config/environment.dart';
+import 'package:little_challenge_app/services/api_headers.dart';
 
 class SearchResultsScreen extends StatefulWidget {
   final String? searchQuery;
@@ -48,7 +49,9 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
     }
 
     try {
-      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
+      final response = await http
+          .get(Uri.parse(url), headers: await ApiHeaders.baseHeaders())
+          .timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(utf8.decode(response.bodyBytes));
         setState(() {

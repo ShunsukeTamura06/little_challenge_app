@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../models/task.dart';
 import 'package:little_challenge_app/config/environment.dart';
+import 'package:little_challenge_app/services/api_headers.dart';
 
 // A model for the log entry, adapted from the backend response
 import 'package:little_challenge_app/screens/challenge_detail_screen.dart';
@@ -82,7 +83,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final url = Uri.parse('${Environment.apiBaseUrl}/logs?month=$formattedMonth');
 
     try {
-      final response = await http.get(Uri.parse(url.toString()));
+      final response = await http.get(Uri.parse(url.toString()), headers: await ApiHeaders.baseHeaders());
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(utf8.decode(response.bodyBytes));
         
