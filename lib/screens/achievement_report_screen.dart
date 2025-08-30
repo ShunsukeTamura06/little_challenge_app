@@ -77,10 +77,8 @@ class _AchievementReportScreenState extends State<AchievementReportScreen> {
     final url = Uri.parse('${Environment.apiBaseUrl}/logs');
     final headers = await ApiHeaders.jsonHeaders();
     final nowLocal = DateTime.now();
-    final isMy = widget.taskSource == 'my';
     final body = json.encode({
-      if (!isMy) 'task_id': int.tryParse(widget.taskId),
-      if (isMy) 'my_task_id': int.tryParse(widget.taskId),
+      'task_id': int.tryParse(widget.taskId),
       'memo': _memoController.text,
       'feeling': feeling,
       'achieved_at': nowLocal.toIso8601String(),

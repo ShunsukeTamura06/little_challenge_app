@@ -83,7 +83,7 @@ class _MyTasksScreenState extends State<MyTasksScreen> {
   Future<void> _stockMyTask(int taskId, String title) async {
     final url = Uri.parse('${Environment.apiBaseUrl}/stock');
     final headers = await ApiHeaders.jsonHeaders();
-    final body = json.encode({'my_task_id': taskId});
+    final body = json.encode({'task_id': taskId});
     try {
       final response = await http.post(url, headers: headers, body: body);
       if (!mounted) return;

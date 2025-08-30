@@ -10,8 +10,7 @@ class Stock(Base):
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(String, nullable=False)
-    challenge_id = Column(Integer, ForeignKey("challenges.id"), nullable=False)
+    task_id = Column(Integer, ForeignKey("tasks.id"), nullable=False)
     created_at = Column(DateTime, default=func.now(), nullable=False)
 
-    challenge = relationship("Challenge")
-
+    task = relationship("Task")

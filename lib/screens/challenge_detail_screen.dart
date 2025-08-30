@@ -128,7 +128,7 @@ class ChallengeDetailScreen extends StatelessWidget {
         // If this task was from stock, remove it from stock
         if (isFromStock) {
           try {
-            final deleteUrl = Uri.parse('${Environment.apiBaseUrl}/stock/by-challenge/${task.id}');
+            final deleteUrl = Uri.parse('${Environment.apiBaseUrl}/stock/by-task/${task.id}');
             await http.delete(deleteUrl, headers: await ApiHeaders.baseHeaders());
           } catch (e) {
             // Ignore deletion errors since the main action (setting daily task) succeeded

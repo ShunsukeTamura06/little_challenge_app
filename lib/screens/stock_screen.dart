@@ -122,9 +122,7 @@ class _StockScreenState extends State<StockScreen> {
         
         // Delete the task from stock in the backend (silently)
         try {
-          final deleteUrl = isMy
-              ? Uri.parse('${Environment.apiBaseUrl}/stock/by-my-task/${int.parse(t.id)}')
-              : Uri.parse('${Environment.apiBaseUrl}/stock/by-challenge/$taskId');
+          final deleteUrl = Uri.parse('${Environment.apiBaseUrl}/stock/by-task/${t.id}');
           await http.delete(deleteUrl, headers: await ApiHeaders.baseHeaders());
         } catch (e) {
           // Ignore deletion errors since the main action (setting daily task) succeeded
@@ -177,10 +175,7 @@ class _StockScreenState extends State<StockScreen> {
     });
 
     final Task t = taskToDelete;
-    final bool isMy = (t.source == 'my');
-    final url = isMy
-        ? Uri.parse('${Environment.apiBaseUrl}/stock/by-my-task/${int.parse(t.id)}')
-        : Uri.parse('${Environment.apiBaseUrl}/stock/by-challenge/${t.id}');
+    final url = Uri.parse('${Environment.apiBaseUrl}/stock/by-task/${t.id}');
 
     try {
       final response = await http.delete(url, headers: await ApiHeaders.baseHeaders());
@@ -233,8 +228,7 @@ class _StockScreenState extends State<StockScreen> {
     // Re-add to the backend
     final url = Uri.parse('${Environment.apiBaseUrl}/stock');
     final headers = await ApiHeaders.jsonHeaders();
-    final bool isMy = (task.source == 'my');
-    final body = json.encode(isMy ? {'my_task_id': int.parse(task.id)} : {'task_id': task.id});
+    final body = json.encode({'task_id': task.id});
 
     try {
       final response = await http.post(url, headers: headers, body: body);
