@@ -1,5 +1,2 @@
 #include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"
 #include "Generated.xcconfig"
-
-// Append production API base URL for Release builds
-DART_DEFINES=$(DART_DEFINES),QVBJX0JBU0VfVVJMPWh0dHBzOi8vbGl0dGxlLWNoYWxsZW5nZS1hcGkub25yZW5kZXIuY29t

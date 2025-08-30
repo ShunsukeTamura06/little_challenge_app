@@ -1,0 +1,4 @@
+{
+  "API_BASE_URL": "https://little-challenge-api.onrender.com",
+  "ENV_NAME": "prod"
+}
