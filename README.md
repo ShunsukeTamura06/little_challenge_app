@@ -17,6 +17,7 @@ This repository contains a Flutter app and a FastAPI backend. See AGENTS.md for 
 **Backend (FastAPI)**
 - Docker: `docker-compose up --build` (docs at http://localhost:8000/docs)
 - Local: `cd backend && pip install -r requirements.txt && uvicorn app.main:app --reload`
+- See also: `docs/OPERATIONS.md` for user scoping and operational details
 
 **Environment Configuration (Frontend)**
 - API base URL and env name are injected via Dart defines.
