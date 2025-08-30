@@ -92,7 +92,7 @@ class _StockScreenState extends State<StockScreen> {
 
     final url = Uri.parse('${Environment.apiBaseUrl}/tasks/daily/replace');
     final headers = await ApiHeaders.jsonHeaders();
-    final Task? t = _stockedTasks.firstWhere((e) => e.id == taskId, orElse: () => Task(id: taskId, title: taskTitle, tags: []));
+    final Task t = _stockedTasks.firstWhere((e) => e.id == taskId, orElse: () => Task(id: taskId, title: taskTitle, tags: []));
     final bool isMy = (t.source == 'my');
     final body = json.encode(isMy
         ? {

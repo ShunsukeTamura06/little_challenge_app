@@ -43,3 +43,9 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# iOS pods and generated pod support files (do not commit)
+ios/Pods/
+ios/Pods-Runner/
+ios/Pods-Runner 2/
+ios/Pods-RunnerTests/
