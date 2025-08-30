@@ -8,12 +8,13 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 
 from ..core.database import get_db
-from ..models import Category, Challenge, Achievement, MyTask
+from ..models import Category, Challenge, Achievement, MyTask, MyTaskStock
 from ..models.stock import Stock
 from ..schemas.category import CategoryResponse
 from ..schemas.log import LogCreate, LogResponse
 from ..schemas.stock import StockCreate, StockResponse
 from ..schemas.challenge import ChallengeSummary
+from ..schemas.task_list import TaskListItem
 from ..schemas.task import TaskReplaceRequest
 from ..schemas.my_task import MyTaskCreate, MyTaskUpdate, MyTaskResponse
 
@@ -126,10 +127,30 @@ def get_daily_task(force_refresh: bool = False, db: Session = Depends(get_db)):
 
 
 @router.post("/tasks/daily/replace")
-def replace_daily_task(req: TaskReplaceRequest, db: Session = Depends(get_db)):
+def replace_daily_task(
+    req: TaskReplaceRequest,
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+):
+    # If my_task_id provided, return MyTask as daily
+    if req.my_task_id is not None:
+        mt = db.query(MyTask).filter(MyTask.id == req.my_task_id, MyTask.user_id == user_id).first()
+        if not mt:
+            raise HTTPException(status_code=404, detail="MyTask not found")
+        return {
+            "id": f"my-{mt.id}",
+            "title": mt.title,
+            "description": None,
+            "difficulty": None,
+            "tags": ["My Task"],
+            "stats": {"completion_rate": random.uniform(0.1, 0.8)},
+        }
+
+    if not req.new_task_id:
+        raise HTTPException(status_code=400, detail="new_task_id or my_task_id required")
     try:
         task_id = int(req.new_task_id)
-    except ValueError:
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid new_task_id format.")
 
     new_task = (
@@ -142,14 +163,13 @@ def replace_daily_task(req: TaskReplaceRequest, db: Session = Depends(get_db)):
     if new_task is None:
         raise HTTPException(status_code=404, detail="New task not found.")
 
-    # The spec says the response should be the same as GET /tasks/daily
     return {
         "id": str(new_task.id),
         "title": new_task.title,
         "description": new_task.description,
         "difficulty": new_task.difficulty,
         "tags": [new_task.category.name],
-        "stats": {"completion_rate": random.uniform(0.1, 0.8)}, # Assuming random stats for replaced tasks
+        "stats": {"completion_rate": random.uniform(0.1, 0.8)},
     }
 
 
@@ -179,13 +199,33 @@ def create_log(
     return {"log_id": db_log.id, "message": "Successfully created."}
 
 
-@router.post("/stock", response_model=StockResponse, status_code=201)
+@router.post("/stock", status_code=201)
 def create_stock(
     stock: StockCreate,
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
 ):
+    # Handle MyTask stocks
+    if stock.my_task_id is not None:
+        mt = db.query(MyTask).filter(MyTask.id == stock.my_task_id, MyTask.user_id == user_id).first()
+        if not mt:
+            raise HTTPException(status_code=404, detail="MyTask not found")
+        existing = (
+            db.query(MyTaskStock)
+            .filter(MyTaskStock.user_id == user_id, MyTaskStock.my_task_id == stock.my_task_id)
+            .first()
+        )
+        if existing:
+            return {"status": "exists"}
+        item = MyTaskStock(user_id=user_id, my_task_id=stock.my_task_id)
+        db.add(item)
+        db.commit()
+        db.refresh(item)
+        return {"status": "created", "id": item.id}
 
+    # Challenge stocks (legacy)
+    if stock.task_id is None:
+        raise HTTPException(status_code=400, detail="Either my_task_id or task_id is required")
     try:
         task_id_int = int(stock.task_id)
     except ValueError:
@@ -195,25 +235,19 @@ def create_stock(
     if db_challenge is None:
         raise HTTPException(status_code=404, detail="Challenge not found")
 
-    # Check if the task is already stocked by the user
     existing_stock = (
         db.query(Stock)
         .filter(Stock.user_id == user_id, Stock.challenge_id == task_id_int)
         .first()
     )
     if existing_stock:
-        # Just return the existing stock item
-        return existing_stock
+        return {"status": "exists"}
 
-    db_stock = Stock(
-        user_id=user_id,
-        challenge_id=task_id_int,
-    )
+    db_stock = Stock(user_id=user_id, challenge_id=task_id_int)
     db.add(db_stock)
     db.commit()
     db.refresh(db_stock)
-
-    return db_stock
+    return {"status": "created", "id": db_stock.id}
 
 
 @router.delete("/stock/by-challenge/{challenge_id}", status_code=204)
@@ -231,6 +265,21 @@ def delete_stock_by_challenge_id(
         db.delete(stock_item)
         db.commit()
 
+    return Response(status_code=204)
+
+
+@router.delete("/stock/by-my-task/{my_task_id}", status_code=204)
+def delete_stock_by_my_task_id(
+    my_task_id: int, db: Session = Depends(get_db), user_id: str = Depends(get_current_user_id)
+):
+    stock_item = (
+        db.query(MyTaskStock)
+        .filter(MyTaskStock.user_id == user_id, MyTaskStock.my_task_id == my_task_id)
+        .first()
+    )
+    if stock_item:
+        db.delete(stock_item)
+        db.commit()
     return Response(status_code=204)
 
 
@@ -286,27 +335,77 @@ def get_logs(
     return grouped_logs
 
 
-@router.get("/stock", response_model=List[ChallengeSummary])
+@router.get("/stock", response_model=List[TaskListItem])
 def get_stocked_tasks(db: Session = Depends(get_db), user_id: str = Depends(get_current_user_id)):
 
-    stocked_items = (
+    ch_stocks = (
         db.query(Stock)
         .options(joinedload(Stock.challenge).joinedload(Challenge.category))
         .filter(Stock.user_id == user_id)
-        .order_by(Stock.created_at.desc())
+        .all()
+    )
+    my_stocks = (
+        db.query(MyTaskStock)
+        .options(joinedload(MyTaskStock.my_task))
+        .filter(MyTaskStock.user_id == user_id)
         .all()
     )
 
+    unified: list[tuple[dict, "datetime"]] = []  # (payload, created_at)
+    for s in ch_stocks:
+        ch = s.challenge
+        unified.append(
+            (
+                {
+                    "id": ch.id,
+                    "title": ch.title,
+                    "tags": [ch.category.name],
+                    "description": ch.description,
+                    "difficulty": ch.difficulty,
+                    "source": "catalog",
+                },
+                s.created_at,
+            )
+        )
+    for s in my_stocks:
+        mt = s.my_task
+        unified.append(
+            (
+                {
+                    "id": mt.id,
+                    "title": mt.title,
+                    "tags": ["My Task"],
+                    "description": None,
+                    "difficulty": None,
+                    "source": "my",
+                },
+                s.created_at,
+            )
+        )
+
+    unified.sort(key=lambda x: x[1], reverse=True)
+    return [u[0] for u in unified]
+
+
+@router.get("/stock/my")
+def get_my_task_stocks(db: Session = Depends(get_db), user_id: str = Depends(get_current_user_id)):
+    items = (
+        db.query(MyTaskStock)
+        .options(joinedload(MyTaskStock.my_task))
+        .filter(MyTaskStock.user_id == user_id)
+        .order_by(MyTaskStock.created_at.desc())
+        .all()
+    )
     results = []
-    for item in stocked_items:
-        ch = item.challenge
+    for s in items:
+        mt = s.my_task
         results.append(
             {
-                "id": ch.id,
-                "title": ch.title,
-                "tags": [ch.category.name],
-                "description": ch.description,
-                "difficulty": ch.difficulty,
+                "id": f"my-{mt.id}",
+                "title": mt.title,
+                "tags": ["My Task"],
+                "description": None,
+                "difficulty": None,
             }
         )
     return results

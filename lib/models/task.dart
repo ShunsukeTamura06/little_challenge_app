@@ -6,6 +6,7 @@ class Task {
   final int? difficulty;
   final double? completionRate; // Nullable for tasks from stock etc.
   final bool? isCompleted; // For search results
+  final String? source; // 'catalog' or 'my'
 
   Task({
     required this.id,
@@ -15,6 +16,7 @@ class Task {
     this.difficulty,
     this.completionRate,
     this.isCompleted,
+    this.source,
   });
 
   factory Task.fromJson(Map<String, dynamic> json) {
@@ -38,6 +40,7 @@ class Task {
       difficulty: json['difficulty'] as int?,
       completionRate: completionRate,
       isCompleted: json['is_completed'] as bool?,
+      source: json['source'] as String?,
     );
   }
 }

@@ -3,6 +3,8 @@ from .challenge import Challenge
 from .achievement import Achievement
 from .stock import Stock
 from .my_task import MyTask
+from .my_task_stock import MyTaskStock
+from .my_task import MyTask
 
 __all__ = [
     "Category",
@@ -10,4 +12,5 @@ __all__ = [
     "Achievement",
     "Stock",
     "MyTask",
+    "MyTaskStock",
 ]

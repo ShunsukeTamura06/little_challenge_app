@@ -292,7 +292,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: _onAchieveTapped,
+              onPressed: task.source == 'my' ? null : _onAchieveTapped,
               style: ElevatedButton.styleFrom(
                 backgroundColor: theme.primaryColor,
                 padding: const EdgeInsets.symmetric(vertical: 16),

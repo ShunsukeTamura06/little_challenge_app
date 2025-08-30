@@ -7,15 +7,15 @@ WORKDIR /app
 # 高速なPythonパッケージマネージャであるuvをインストール
 RUN pip install uv
 
-# 依存関係ファイルをコピー（backendディレクトリから）
-COPY ./backend/requirements.txt /app/requirements.txt
+# 依存関係ファイルをコピー（build contextは backend/）
+COPY requirements.txt /app/requirements.txt
 
 # uvを使ってrequirements.txtから依存関係をインストール
 # --systemフラグを追加して、コンテナのシステムPythonにインストールすることを許可
 RUN uv pip install --system --no-cache -r /app/requirements.txt
 
-# アプリケーションコードの残りをコンテナにコピー（backendディレクトリから）
-COPY ./backend /app
+# アプリケーションコード一式をコンテナにコピー
+COPY . /app
 
 # アプリを実行。「0.0.0.0」でコンテナ外部からアクセスできるようにする
 EXPOSE 8000

@@ -7,6 +7,10 @@ import 'package:little_challenge_app/models/my_task.dart';
 import 'package:little_challenge_app/screens/my_task_editor_screen.dart';
 import 'package:little_challenge_app/config/environment.dart';
 import 'package:little_challenge_app/services/api_headers.dart';
+import 'package:provider/provider.dart';
+import '../models/task.dart' as model;
+import '../providers/app_state_manager.dart';
+import 'package:little_challenge_app/services/api_headers.dart';
 
 class MyTasksScreen extends StatefulWidget {
   const MyTasksScreen({super.key});
@@ -70,6 +74,57 @@ class _MyTasksScreenState extends State<MyTasksScreen> {
         );
       }
     } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('エラーが発生しました: $e')),
+      );
+    }
+  }
+
+  Future<void> _stockMyTask(int taskId, String title) async {
+    final url = Uri.parse('${Environment.apiBaseUrl}/stock');
+    final headers = await ApiHeaders.jsonHeaders();
+    final body = json.encode({'my_task_id': taskId});
+    try {
+      final response = await http.post(url, headers: headers, body: body);
+      if (!mounted) return;
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('「$title」をストックに追加しました')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('ストックに失敗しました (Code: ${response.statusCode})')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('エラーが発生しました: $e')),
+      );
+    }
+  }
+
+  Future<void> _setMyTaskAsDaily(int taskId, String title) async {
+    final url = Uri.parse('${Environment.apiBaseUrl}/tasks/daily/replace');
+    final headers = await ApiHeaders.jsonHeaders();
+    final body = json.encode({'my_task_id': taskId, 'source': 'my_task'});
+    try {
+      final response = await http.post(url, headers: headers, body: body);
+      if (!mounted) return;
+      if (response.statusCode == 200) {
+        final data = json.decode(utf8.decode(response.bodyBytes));
+        final newTask = model.Task.fromJson(data);
+        Provider.of<AppStateManager>(context, listen: false).setDailyTask(newTask);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('「$title」を今日のタスクに設定しました')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('設定に失敗しました (Code: ${response.statusCode})')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('エラーが発生しました: $e')),
       );
@@ -155,9 +210,25 @@ class _MyTasksScreenState extends State<MyTasksScreen> {
             child: ListTile(
               title: Text(task.title),
               subtitle: Text('作成日: ${DateFormat('yyyy/MM/dd').format(task.createdAt)}'),
-              trailing: IconButton(
-                icon: const Icon(Icons.edit),
-                onPressed: () => _navigateToEditor(task: task),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    tooltip: 'ストックに追加',
+                    icon: const Icon(Icons.bookmark_add_outlined),
+                    onPressed: () => _stockMyTask(task.id, task.title),
+                  ),
+                  IconButton(
+                    tooltip: '今日やる',
+                    icon: const Icon(Icons.today_outlined),
+                    onPressed: () => _setMyTaskAsDaily(task.id, task.title),
+                  ),
+                  IconButton(
+                    tooltip: '編集',
+                    icon: const Icon(Icons.edit),
+                    onPressed: () => _navigateToEditor(task: task),
+                  ),
+                ],
               ),
             ),
           );
