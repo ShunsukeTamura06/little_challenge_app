@@ -96,7 +96,7 @@ class _StockScreenState extends State<StockScreen> {
     final bool isMy = (t.source == 'my');
     final body = json.encode(isMy
         ? {
-            'my_task_id': int.parse(taskId.substring(3)),
+            'my_task_id': int.tryParse(t.id),
             'source': 'stock_my',
           }
         : {
@@ -123,7 +123,7 @@ class _StockScreenState extends State<StockScreen> {
         // Delete the task from stock in the backend (silently)
         try {
           final deleteUrl = isMy
-              ? Uri.parse('${Environment.apiBaseUrl}/stock/by-my-task/${int.parse(taskId.substring(3))}')
+              ? Uri.parse('${Environment.apiBaseUrl}/stock/by-my-task/${int.parse(t.id)}')
               : Uri.parse('${Environment.apiBaseUrl}/stock/by-challenge/$taskId');
           await http.delete(deleteUrl, headers: await ApiHeaders.baseHeaders());
         } catch (e) {
@@ -176,7 +176,7 @@ class _StockScreenState extends State<StockScreen> {
       _stockedTasks.removeAt(taskIndex);
     });
 
-    final Task t = _stockedTasks.firstWhere((e) => e.id == taskId);
+    final Task t = taskToDelete;
     final bool isMy = (t.source == 'my');
     final url = isMy
         ? Uri.parse('${Environment.apiBaseUrl}/stock/by-my-task/${int.parse(t.id)}')

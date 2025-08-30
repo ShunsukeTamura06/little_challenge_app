@@ -123,6 +123,7 @@ def get_daily_task(force_refresh: bool = False, db: Session = Depends(get_db)):
         "difficulty": random_task.difficulty,
         "tags": [random_task.category.name],
         "stats": {"completion_rate": random.uniform(0.1, 0.8)},
+        "source": "catalog",
     }
 
 
@@ -138,12 +139,13 @@ def replace_daily_task(
         if not mt:
             raise HTTPException(status_code=404, detail="MyTask not found")
         return {
-            "id": f"my-{mt.id}",
+            "id": str(mt.id),
             "title": mt.title,
             "description": None,
             "difficulty": None,
             "tags": ["My Task"],
             "stats": {"completion_rate": random.uniform(0.1, 0.8)},
+            "source": "my",
         }
 
     if not req.new_task_id:
@@ -170,6 +172,7 @@ def replace_daily_task(
         "difficulty": new_task.difficulty,
         "tags": [new_task.category.name],
         "stats": {"completion_rate": random.uniform(0.1, 0.8)},
+        "source": "catalog",
     }
 
 
@@ -179,23 +182,34 @@ def create_log(
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
 ):
+    if log.task_id is None and log.my_task_id is None:
+        raise HTTPException(status_code=400, detail="task_id or my_task_id is required")
 
-    db_challenge = db.query(Challenge).filter(Challenge.id == log.task_id).first()
-    if db_challenge is None:
-        raise HTTPException(status_code=404, detail="Challenge not found")
-
-    db_log = Achievement(
-        user_id=user_id,
-        challenge_id=log.task_id,
-        memo=log.memo,
-        feeling=log.feeling,
-        # Save in client-local time when provided; otherwise use DB default
-        achieved_at=log.achieved_at if log.achieved_at is not None else None,
-    )
+    if log.my_task_id is not None:
+        mt = db.query(MyTask).filter(MyTask.id == log.my_task_id, MyTask.user_id == user_id).first()
+        if not mt:
+            raise HTTPException(status_code=404, detail="MyTask not found")
+        db_log = Achievement(
+            user_id=user_id,
+            my_task_id=log.my_task_id,
+            memo=log.memo,
+            feeling=log.feeling,
+            achieved_at=log.achieved_at if log.achieved_at is not None else None,
+        )
+    else:
+        db_challenge = db.query(Challenge).filter(Challenge.id == log.task_id).first()
+        if db_challenge is None:
+            raise HTTPException(status_code=404, detail="Challenge not found")
+        db_log = Achievement(
+            user_id=user_id,
+            challenge_id=log.task_id,
+            memo=log.memo,
+            feeling=log.feeling,
+            achieved_at=log.achieved_at if log.achieved_at is not None else None,
+        )
     db.add(db_log)
     db.commit()
     db.refresh(db_log)
-
     return {"log_id": db_log.id, "message": "Successfully created."}
 
 
@@ -289,11 +303,7 @@ def get_logs(
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
 ):
-    query = (
-        db.query(Achievement)
-        .options(joinedload(Achievement.challenge).joinedload(Challenge.category))
-        .filter(Achievement.user_id == user_id)
-    )
+    query = db.query(Achievement).filter(Achievement.user_id == user_id)
 
     if month:
         try:
@@ -309,23 +319,39 @@ def get_logs(
     logs = query.order_by(Achievement.achieved_at.desc()).all()
 
     def achievement_to_dict(achievement: Achievement):
-        return {
+        payload = {
             "id": achievement.id,
             "user_id": achievement.user_id,
             "memo": achievement.memo,
             "feeling": achievement.feeling,
             "achieved_at": achievement.achieved_at.isoformat(),
-            "challenge": {
-                "id": achievement.challenge.id,
-                "title": achievement.challenge.title,
-                "description": achievement.challenge.description,
-                "difficulty": achievement.challenge.difficulty,
-                "category": {
-                    "id": achievement.challenge.category.id,
-                    "name": achievement.challenge.category.name,
-                },
-            },
         }
+        if achievement.challenge_id is not None:
+            ch = (
+                db.query(Challenge)
+                .options(joinedload(Challenge.category))
+                .filter(Challenge.id == achievement.challenge_id)
+                .first()
+            )
+            payload["challenge"] = {
+                "id": ch.id,
+                "title": ch.title,
+                "description": ch.description,
+                "difficulty": ch.difficulty,
+                "category": {"id": ch.category.id, "name": ch.category.name},
+                "source": "catalog",
+            }
+        elif achievement.my_task_id is not None:
+            mt = db.query(MyTask).filter(MyTask.id == achievement.my_task_id).first()
+            payload["challenge"] = {
+                "id": mt.id,
+                "title": mt.title,
+                "description": None,
+                "difficulty": None,
+                "category": {"id": -1, "name": "My Task"},
+                "source": "my",
+            }
+        return payload
 
     grouped_logs = defaultdict(list)
     for log in logs:

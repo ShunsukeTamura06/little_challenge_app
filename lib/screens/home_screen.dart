@@ -87,6 +87,7 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute(
         builder: (context) => AchievementReportScreen(
           taskId: task.id,
+          taskSource: task.source,
           showUndoOption: true,
         ),
         fullscreenDialog: true,
@@ -292,7 +293,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: task.source == 'my' ? null : _onAchieveTapped,
+              onPressed: _onAchieveTapped,
               style: ElevatedButton.styleFrom(
                 backgroundColor: theme.primaryColor,
                 padding: const EdgeInsets.symmetric(vertical: 16),

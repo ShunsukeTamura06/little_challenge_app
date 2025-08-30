@@ -8,11 +8,13 @@ import 'package:little_challenge_app/services/api_headers.dart';
 
 class AchievementReportScreen extends StatefulWidget {
   final String taskId;
+  final String? taskSource; // 'catalog' or 'my'
   final bool showUndoOption;
 
   const AchievementReportScreen({
     super.key, 
     required this.taskId,
+    this.taskSource,
     this.showUndoOption = false,
   });
 
@@ -75,11 +77,12 @@ class _AchievementReportScreenState extends State<AchievementReportScreen> {
     final url = Uri.parse('${Environment.apiBaseUrl}/logs');
     final headers = await ApiHeaders.jsonHeaders();
     final nowLocal = DateTime.now();
+    final isMy = widget.taskSource == 'my';
     final body = json.encode({
-      'task_id': int.parse(widget.taskId),
+      if (!isMy) 'task_id': int.tryParse(widget.taskId),
+      if (isMy) 'my_task_id': int.tryParse(widget.taskId),
       'memo': _memoController.text,
       'feeling': feeling,
-      // Save using client-local timestamp
       'achieved_at': nowLocal.toIso8601String(),
     });
 
