@@ -9,7 +9,12 @@ from app import models  # noqa: F401
 
 
 def main() -> None:
+    print("Dropping all tables...")
+    Base.metadata.drop_all(bind=engine)
+    print("Tables dropped.")
+    print("Creating all tables...")
     Base.metadata.create_all(bind=engine)
+    print("Tables created.")
 
 
 if __name__ == "__main__":
