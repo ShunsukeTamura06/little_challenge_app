@@ -11,6 +11,7 @@ import 'package:little_challenge_app/services/api_headers.dart';
 import 'achievement_report_screen.dart';
 import 'challenge_detail_screen.dart';
 import '../models/task.dart';
+import '../services/calendar_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -40,6 +41,29 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     super.dispose();
+  }
+
+  Future<void> _onAddToScheduleTapped() async {
+    final task = Provider.of<AppStateManager>(context, listen: false).dailyTask;
+    if (task == null) return;
+
+    final ok = await CalendarService.addTaskToCalendar(task);
+    if (!mounted) return;
+    if (ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('カレンダーに追加しました（または追加画面を開きました）'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('カレンダーへの追加に失敗しました'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    }
   }
 
   Future<void> _fetchDailyTask({bool forceRefresh = false}) async {
@@ -310,6 +334,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
               child: Text('あとでやる', style: TextStyle(color: theme.primaryColor)),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: _onAddToScheduleTapped,
+              icon: Icon(Icons.event_available_outlined, color: theme.primaryColor),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: theme.primaryColor),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              label: Text('スケジュールに追加する', style: TextStyle(color: theme.primaryColor)),
             ),
             const SizedBox(height: 12),
             TextButton(

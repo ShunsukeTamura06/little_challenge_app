@@ -10,7 +10,6 @@ import 'package:little_challenge_app/services/api_headers.dart';
 import 'package:provider/provider.dart';
 import '../models/task.dart' as model;
 import '../providers/app_state_manager.dart';
-import 'package:little_challenge_app/services/api_headers.dart';
 
 class MyTasksScreen extends StatefulWidget {
   const MyTasksScreen({super.key});
