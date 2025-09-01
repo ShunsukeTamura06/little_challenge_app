@@ -2,7 +2,7 @@ from pydantic import BaseModel
 
 
 class StockCreate(BaseModel):
-    task_id: str
+    task_id: int
 
 class StockResponse(BaseModel):
     id: str

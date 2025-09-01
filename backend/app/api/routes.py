@@ -271,10 +271,7 @@ def create_stock(
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
 ):
-    try:
-        task_id_int = int(stock.task_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid task_id format. Must be an integer.")
+    task_id_int = stock.task_id
     t = db.query(Task).filter(Task.id == task_id_int).first()
     if not t:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -399,4 +396,3 @@ def delete_my_task(
         db.delete(task)
         db.commit()
     return Response(status_code=204)
-
