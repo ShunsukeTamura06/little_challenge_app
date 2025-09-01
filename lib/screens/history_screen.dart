@@ -9,6 +9,7 @@ import 'package:little_challenge_app/services/api_headers.dart';
 
 // A model for the log entry, adapted from the backend response
 import 'package:little_challenge_app/screens/challenge_detail_screen.dart';
+import 'package:little_challenge_app/screens/all_achievements_screen.dart';
 
 class LogEntry {
   final String id;
@@ -288,12 +289,31 @@ class _HistoryScreenState extends State<HistoryScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          Column(
-            children: [
-              Text('合計達成数', style: Theme.of(context).textTheme.bodyMedium),
-              const SizedBox(height: 4),
-              Text('$totalAchievements', style: Theme.of(context).textTheme.headlineMedium),
-            ],
+          InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const AllAchievementsScreen(),
+                ),
+              );
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+              child: Column(
+                children: [
+                  Text('合計達成数', style: Theme.of(context).textTheme.bodyMedium),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Text('$totalAchievements', style: Theme.of(context).textTheme.headlineMedium),
+                      const SizedBox(width: 6),
+                      const Icon(Icons.list_alt_outlined, size: 20, color: Colors.teal),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ),
           Column(
             children: [
