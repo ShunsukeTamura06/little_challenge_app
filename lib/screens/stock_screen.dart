@@ -21,11 +21,34 @@ class _StockScreenState extends State<StockScreen> {
   bool _isLoading = true;
   String? _errorMessage;
   List<Task> _stockedTasks = [];
+  int _lastSeenRefreshCounter = 0;
 
   @override
   void initState() {
     super.initState();
     _fetchStockedTasks();
+    // Listen to app state changes to refresh when requested
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final appState = Provider.of<AppStateManager>(context, listen: false);
+      _lastSeenRefreshCounter = appState.stockRefreshCounter;
+      appState.addListener(_onAppStateChanged);
+    });
+  }
+
+  void _onAppStateChanged() {
+    final appState = Provider.of<AppStateManager>(context, listen: false);
+    if (appState.selectedIndex == 2 && appState.stockRefreshCounter != _lastSeenRefreshCounter) {
+      _lastSeenRefreshCounter = appState.stockRefreshCounter;
+      _fetchStockedTasks();
+    }
+  }
+
+  @override
+  void dispose() {
+    try {
+      Provider.of<AppStateManager>(context, listen: false).removeListener(_onAppStateChanged);
+    } catch (_) {}
+    super.dispose();
   }
 
   Future<void> _fetchStockedTasks() async {
@@ -94,18 +117,29 @@ class _StockScreenState extends State<StockScreen> {
     final headers = await ApiHeaders.jsonHeaders();
     final Task t = _stockedTasks.firstWhere((e) => e.id == taskId, orElse: () => Task(id: taskId, title: taskTitle, tags: []));
     final bool isMy = (t.source == 'my');
-    final body = json.encode(isMy
-        ? {
+    // Prefer my_task_id for newer backend; will fallback to new_task_id if needed
+    final bodyMy = isMy
+        ? json.encode({
             'my_task_id': int.tryParse(t.id),
             'source': 'stock_my',
-          }
-        : {
-            'new_task_id': taskId,
-            'source': 'stock',
-          });
+          })
+        : null;
+    final bodyNew = json.encode({
+      'new_task_id': taskId,
+      'source': isMy ? 'stock_my' : 'stock',
+    });
 
     try {
-      final response = await http.post(url, headers: headers, body: body);
+      http.Response response;
+      if (isMy && bodyMy != null) {
+        response = await http.post(url, headers: headers, body: bodyMy);
+        if (response.statusCode == 422 || response.statusCode == 400) {
+          // Fallback for Render backend that expects new_task_id as string
+          response = await http.post(url, headers: headers, body: bodyNew);
+        }
+      } else {
+        response = await http.post(url, headers: headers, body: bodyNew);
+      }
 
       if (!mounted) return;
 
@@ -228,14 +262,19 @@ class _StockScreenState extends State<StockScreen> {
     // Re-add to the backend
     final url = Uri.parse('${Environment.apiBaseUrl}/stock');
     final headers = await ApiHeaders.jsonHeaders();
-    final body = json.encode({'task_id': task.id});
+    final int? taskId = int.tryParse(task.id);
+    final bodyInt = json.encode({'task_id': taskId});
+    final bodyStr = json.encode({'task_id': task.id});
 
     try {
-      final response = await http.post(url, headers: headers, body: body);
+      http.Response response = await http.post(url, headers: headers, body: bodyInt);
+      if (response.statusCode == 422 || response.statusCode == 400) {
+        response = await http.post(url, headers: headers, body: bodyStr);
+      }
 
       if (!mounted) return;
 
-      if (response.statusCode == 201) {
+      if (response.statusCode == 201 || response.statusCode == 200) {
         // Add back to the local list at the original position
         setState(() {
           _stockedTasks.insert(index, task);

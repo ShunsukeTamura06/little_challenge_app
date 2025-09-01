@@ -3,6 +3,7 @@ services:
     name: little-challenge-api
     env: docker
     dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
     autoDeploy: true
     plan: free
     healthCheckPath: /healthz

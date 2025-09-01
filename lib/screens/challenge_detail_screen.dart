@@ -46,23 +46,40 @@ class ChallengeDetailScreen extends StatelessWidget {
 
     final url = Uri.parse('${Environment.apiBaseUrl}/stock');
     final headers = await ApiHeaders.jsonHeaders();
-    final body = json.encode({
-      'task_id': task.id,
-    });
+    final int? idInt = int.tryParse(task.id);
+    final bodyInt = json.encode({'task_id': idInt});
+    final bodyStr = json.encode({'task_id': task.id});
 
     try {
-      final response = await http.post(url, headers: headers, body: body);
+      http.Response response = await http.post(url, headers: headers, body: bodyInt);
+      if (response.statusCode == 422 || response.statusCode == 400) {
+        response = await http.post(url, headers: headers, body: bodyStr);
+      }
 
       if (!context.mounted) return;
 
-      if (response.statusCode == 201) {
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        String message = 'ストックに追加しました！';
+        try {
+          final Map<String, dynamic> body = json.decode(utf8.decode(response.bodyBytes));
+          if (body['status'] == 'exists') message = '既にストック済みです';
+        } catch (_) {}
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('ストックに追加しました！'),
+          SnackBar(
+            content: Text(message),
             backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
+            duration: const Duration(seconds: 2),
+            action: SnackBarAction(
+              label: 'ストックを見る',
+              onPressed: () {
+                final appState = Provider.of<AppStateManager>(context, listen: false);
+                appState.requestStockRefresh();
+                appState.goToTab(2);
+              },
+            ),
           ),
         );
+        Provider.of<AppStateManager>(context, listen: false).requestStockRefresh();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -109,13 +126,21 @@ class ChallengeDetailScreen extends StatelessWidget {
 
     final url = Uri.parse('${Environment.apiBaseUrl}/tasks/daily/replace');
     final headers = await ApiHeaders.jsonHeaders();
-    final body = json.encode({
-      'new_task_id': task.id,
-      'source': 'detail', // or another identifier
-    });
+    final bool isMy = task.source == 'my';
+    final int? idInt = int.tryParse(task.id);
+    final bodyMy = isMy ? json.encode({'my_task_id': idInt, 'source': 'detail'}) : null;
+    final bodyNew = json.encode({'new_task_id': task.id, 'source': 'detail'});
 
     try {
-      final response = await http.post(url, headers: headers, body: body);
+      http.Response response;
+      if (isMy && bodyMy != null) {
+        response = await http.post(url, headers: headers, body: bodyMy);
+        if (response.statusCode == 422 || response.statusCode == 400) {
+          response = await http.post(url, headers: headers, body: bodyNew);
+        }
+      } else {
+        response = await http.post(url, headers: headers, body: bodyNew);
+      }
 
       if (!context.mounted) return;
 

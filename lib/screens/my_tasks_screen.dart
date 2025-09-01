@@ -82,18 +82,57 @@ class _MyTasksScreenState extends State<MyTasksScreen> {
   Future<void> _stockMyTask(int taskId, String title) async {
     final url = Uri.parse('${Environment.apiBaseUrl}/stock');
     final headers = await ApiHeaders.jsonHeaders();
-    final body = json.encode({'task_id': taskId});
+    final bodyInt = json.encode({'task_id': taskId});
     try {
-      final response = await http.post(url, headers: headers, body: body);
+      // First, try sending as int (matches local backend schema)
+      http.Response response = await http
+          .post(url, headers: headers, body: bodyInt)
+          .timeout(const Duration(seconds: 10));
       if (!mounted) return;
       if (response.statusCode == 201 || response.statusCode == 200) {
+        String message = '「$title」をストックに追加しました';
+        try {
+          final Map<String, dynamic> body = json.decode(utf8.decode(response.bodyBytes));
+          if (body['status'] == 'exists') {
+            message = '「$title」は既にストック済みです';
+          }
+        } catch (_) {}
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('「$title」をストックに追加しました')),
+          SnackBar(
+            content: Text(message),
+            action: SnackBarAction(
+              label: 'ストックを見る',
+              onPressed: () {
+                final appState = Provider.of<AppStateManager>(context, listen: false);
+                appState.requestStockRefresh();
+                appState.goToTab(2);
+              },
+            ),
+          ),
         );
+        // Also request refresh in case user navigates manually later
+        Provider.of<AppStateManager>(context, listen: false).requestStockRefresh();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('ストックに失敗しました (Code: ${response.statusCode})')),
-        );
+        // Render backend expects a string task_id; fallback if 422/400
+        final needsString = response.statusCode == 422 || response.statusCode == 400;
+        if (needsString) {
+          final bodyStr = json.encode({'task_id': taskId.toString()});
+          response = await http
+              .post(url, headers: headers, body: bodyStr)
+              .timeout(const Duration(seconds: 10));
+          if (!mounted) return;
+          if (response.statusCode == 201 || response.statusCode == 200) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('「$title」をストックに追加しました')),
+            );
+            return;
+          }
+        }
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('ストックに失敗しました (Code: ${response.statusCode}) ${response.body}')),
+          );
+        }
       }
     } catch (e) {
       if (!mounted) return;
@@ -106,9 +145,12 @@ class _MyTasksScreenState extends State<MyTasksScreen> {
   Future<void> _setMyTaskAsDaily(int taskId, String title) async {
     final url = Uri.parse('${Environment.apiBaseUrl}/tasks/daily/replace');
     final headers = await ApiHeaders.jsonHeaders();
-    final body = json.encode({'my_task_id': taskId, 'source': 'my_task'});
+    final bodyMy = json.encode({'my_task_id': taskId, 'source': 'my'});
     try {
-      final response = await http.post(url, headers: headers, body: body);
+      // Prefer new API that accepts my_task_id
+      http.Response response = await http
+          .post(url, headers: headers, body: bodyMy)
+          .timeout(const Duration(seconds: 10));
       if (!mounted) return;
       if (response.statusCode == 200) {
         final data = json.decode(utf8.decode(response.bodyBytes));
@@ -117,10 +159,33 @@ class _MyTasksScreenState extends State<MyTasksScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('「$title」を今日のタスクに設定しました')),
         );
+        // Move to Home tab so the user can see it reflected
+        Provider.of<AppStateManager>(context, listen: false).goToTab(0);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('設定に失敗しました (Code: ${response.statusCode})')),
-        );
+        // Render backend expects new_task_id string; fallback if 422/400
+        final needsNewTaskId = response.statusCode == 422 || response.statusCode == 400;
+        if (needsNewTaskId) {
+          final bodyNew = json.encode({'new_task_id': taskId.toString(), 'source': 'my'});
+          response = await http
+              .post(url, headers: headers, body: bodyNew)
+              .timeout(const Duration(seconds: 10));
+          if (!mounted) return;
+          if (response.statusCode == 200) {
+            final data = json.decode(utf8.decode(response.bodyBytes));
+            final newTask = model.Task.fromJson(data);
+            Provider.of<AppStateManager>(context, listen: false).setDailyTask(newTask);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('「$title」を今日のタスクに設定しました')),
+            );
+            Provider.of<AppStateManager>(context, listen: false).goToTab(0);
+            return;
+          }
+        }
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('設定に失敗しました (Code: ${response.statusCode}) ${response.body}')),
+          );
+        }
       }
     } catch (e) {
       if (!mounted) return;
