@@ -75,8 +75,8 @@ def initialize_data(db: Session = Depends(get_db)):
             )
         db.commit()
 
-        # Mirror to tasks as catalog entries if tasks table is empty
-        if db.query(Task).count() == 0:
+        # Mirror to tasks as catalog entries if not already present
+        if db.query(Task).filter(Task.source == "catalog").count() == 0:
             for ch in db.query(Challenge).all():
                 db.add(
                     Task(
