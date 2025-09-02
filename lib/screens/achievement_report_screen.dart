@@ -208,17 +208,7 @@ class _AchievementReportScreenState extends State<AchievementReportScreen> {
             fillColor: theme.colorScheme.surface,
           ),
         ),
-        const SizedBox(height: 16),
-        OutlinedButton.icon(
-          icon: const Icon(Icons.add_a_photo),
-          label: const Text("写真を追加（任意）"),
-          onPressed: () { /* TODO: Implement photo adding */ },
-          style: OutlinedButton.styleFrom(
-            foregroundColor: theme.textTheme.bodyMedium?.color,
-            side: BorderSide(color: theme.dividerColor),
-            padding: const EdgeInsets.symmetric(vertical: 12),
-          ),
-        ),
+        
         const SizedBox(height: 24),
         ElevatedButton(
           onPressed: _isSubmitting ? null : () => setState(() => _currentStep = 1),
