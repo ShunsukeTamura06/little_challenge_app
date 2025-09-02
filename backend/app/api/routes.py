@@ -344,7 +344,10 @@ def list_my_tasks(
         .order_by(Task.created_at.desc())
         .all()
     )
-    return [MyTaskResponse(id=t.id, title=t.title, created_at=t.created_at) for t in tasks]
+    return [
+        MyTaskResponse(id=t.id, title=t.title, description=t.description, created_at=t.created_at)
+        for t in tasks
+    ]
 
 
 @router.post("/my_tasks", response_model=MyTaskResponse, status_code=201)
@@ -353,11 +356,18 @@ def create_my_task(
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
 ):
-    task = Task(title=payload.title, source="my", owner_user_id=user_id)
+    task = Task(
+        title=payload.title,
+        description=payload.description,
+        source="my",
+        owner_user_id=user_id,
+    )
     db.add(task)
     db.commit()
     db.refresh(task)
-    return MyTaskResponse(id=task.id, title=task.title, created_at=task.created_at)
+    return MyTaskResponse(
+        id=task.id, title=task.title, description=task.description, created_at=task.created_at
+    )
 
 
 @router.put("/my_tasks/{task_id}", response_model=MyTaskResponse)
@@ -376,9 +386,13 @@ def update_my_task(
         raise HTTPException(status_code=404, detail="MyTask not found")
     if payload.title is not None:
         task.title = payload.title
+    if payload.description is not None:
+        task.description = payload.description
     db.commit()
     db.refresh(task)
-    return MyTaskResponse(id=task.id, title=task.title, created_at=task.created_at)
+    return MyTaskResponse(
+        id=task.id, title=task.title, description=task.description, created_at=task.created_at
+    )
 
 
 @router.delete("/my_tasks/{task_id}", status_code=204)
