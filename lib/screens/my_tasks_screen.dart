@@ -252,51 +252,65 @@ class _MyTasksScreenState extends State<MyTasksScreen> {
 
     return RefreshIndicator(
       onRefresh: _fetchMyTasks,
-      child: ListView.builder(
-        itemCount: _myTasks.length,
-        itemBuilder: (context, index) {
-          final task = _myTasks[index];
-          return Dismissible(
-            key: Key(task.id.toString()),
-            direction: DismissDirection.endToStart,
-            onDismissed: (direction) {
-              _deleteMyTask(task.id);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('「${task.title}」を削除しました')),
-              );
-            },
-            background: Container(
-              color: Colors.red,
-              alignment: Alignment.centerRight,
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: const Icon(Icons.delete, color: Colors.white),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            child: Text(
+              'ここで作成したタスクは他のユーザーには表示されません。',
+              style: Theme.of(context).textTheme.bodySmall,
+              textAlign: TextAlign.center,
             ),
-            child: ListTile(
-              title: Text(task.title),
-              subtitle: Text('作成日: ${DateFormat('yyyy/MM/dd').format(task.createdAt)}'),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    tooltip: 'ストックに追加',
-                    icon: const Icon(Icons.bookmark_add_outlined),
-                    onPressed: () => _stockMyTask(task.id, task.title),
+          ),
+          Expanded(
+            child: ListView.builder(
+              itemCount: _myTasks.length,
+              itemBuilder: (context, index) {
+                final task = _myTasks[index];
+                return Dismissible(
+                  key: Key(task.id.toString()),
+                  direction: DismissDirection.endToStart,
+                  onDismissed: (direction) {
+                    _deleteMyTask(task.id);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('「${task.title}」を削除しました')),
+                    );
+                  },
+                  background: Container(
+                    color: Colors.red,
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: const Icon(Icons.delete, color: Colors.white),
                   ),
-                  IconButton(
-                    tooltip: '今日やる',
-                    icon: const Icon(Icons.today_outlined),
-                    onPressed: () => _setMyTaskAsDaily(task.id, task.title),
+                  child: ListTile(
+                    title: Text(task.title),
+                    subtitle: Text('作成日: ${DateFormat('yyyy/MM/dd').format(task.createdAt)}'),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          tooltip: 'ストックに追加',
+                          icon: const Icon(Icons.bookmark_add_outlined),
+                          onPressed: () => _stockMyTask(task.id, task.title),
+                        ),
+                        IconButton(
+                          tooltip: '今日やる',
+                          icon: const Icon(Icons.today_outlined),
+                          onPressed: () => _setMyTaskAsDaily(task.id, task.title),
+                        ),
+                        IconButton(
+                          tooltip: '編集',
+                          icon: const Icon(Icons.edit),
+                          onPressed: () => _navigateToEditor(task: task),
+                        ),
+                      ],
+                    ),
                   ),
-                  IconButton(
-                    tooltip: '編集',
-                    icon: const Icon(Icons.edit),
-                    onPressed: () => _navigateToEditor(task: task),
-                  ),
-                ],
-              ),
+                );
+              },
             ),
-          );
-        },
+          ),
+        ],
       ),
     );
   }
