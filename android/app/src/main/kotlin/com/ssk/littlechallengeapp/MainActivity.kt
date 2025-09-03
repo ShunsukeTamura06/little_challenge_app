@@ -1,5 +1,6 @@
-package com.example.little_challenge_app
+package com.ssk.littlechallengeapp
 
 import io.flutter.embedding.android.FlutterActivity
 
 class MainActivity : FlutterActivity()
+
